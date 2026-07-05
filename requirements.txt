@@ -1,0 +1,6 @@
+pyqt6>=6.11
+qasync>=0.28
+ccxt>=4.5
+ccxtpro>=1.0
+cryptography>=49.0
+keyring>=25.7
