@@ -7,7 +7,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QGridLayout, QWidget, QSizePolicy, QComboBox,
+    QPushButton, QGridLayout, QWidget, QSizePolicy, QComboBox, QFrame,
 )
 
 from src.db.local_store import LocalStore
@@ -97,7 +97,37 @@ class DailyLedgerDialog(QDialog):
             lbl.setStyleSheet("font-size: 13px; color: #666; font-weight: bold; letter-spacing: 1px;")
             self._grid.addWidget(lbl, 0, col_idx)
         layout.addLayout(self._grid)
-        layout.addStretch()
+        layout.addSpacing(16)
+
+        self._stats_bar = QHBoxLayout()
+        self._stats_bar.setSpacing(12)
+        self._stat_labels: dict[str, QLabel] = {}
+        for key, title in [
+            ("total", "Total"),
+            ("win_rate", "Win Rate"),
+            ("avg", "Avg"),
+            ("best", "Best"),
+            ("worst", "Worst"),
+            ("days", "Days"),
+        ]:
+            card = QFrame()
+            card.setStyleSheet("QFrame { background: #141414; border-radius: 6px; padding: 6px; }")
+            vbox = QVBoxLayout(card)
+            vbox.setContentsMargins(14, 8, 14, 8)
+            vbox.setSpacing(2)
+            title_lbl = QLabel(title)
+            title_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            title_lbl.setStyleSheet("font-size: 11px; color: #666;")
+            vbox.addWidget(title_lbl)
+            val = QLabel("—")
+            val.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            val.setStyleSheet("font-size: 18px; font-weight: bold;")
+            vbox.addWidget(val)
+            self._stat_labels[key] = val
+            self._stats_bar.addWidget(card)
+        layout.addLayout(self._stats_bar)
+
+        layout.addSpacing(8)
 
     def _render_month(self):
         for i in reversed(range(self._grid.count())):
@@ -124,6 +154,8 @@ class DailyLedgerDialog(QDialog):
                 cell = self._make_cell(day_num)
                 self._grid.addWidget(cell, row_idx + 1, col_idx)
 
+        self._update_stats()
+
     def _make_cell(self, day_num: int) -> QWidget:
         date_str = f"{self._current_year:04d}-{self._current_month:02d}-{day_num:02d}"
         pnl = self._daily_pnls.get(date_str)
@@ -136,7 +168,7 @@ class DailyLedgerDialog(QDialog):
         val_txt = ""
 
         if pnl is not None:
-            val_txt = f"{pnl:+,.0f}"
+            val_txt = f"{pnl:+,.2f}"
             if pnl > 0:
                 clr_bg = "#0a1f0a"
                 clr_txt = "#22c55e"
@@ -173,6 +205,33 @@ class DailyLedgerDialog(QDialog):
         self._current_month = self._month_combo.currentIndex() + 1
         self._current_year = int(self._year_combo.currentText())
         self._render_month()
+
+    def _update_stats(self):
+        prefix = f"{self._current_year:04d}-{self._current_month:02d}"
+        pnls = [v for k, v in self._daily_pnls.items() if k.startswith(prefix) and v is not None]
+
+        if not pnls:
+            for lbl in self._stat_labels.values():
+                lbl.setText("—")
+            return
+
+        total = sum(pnls)
+        wins = [p for p in pnls if p > 0]
+        losses = [p for p in pnls if p < 0]
+        win_rate = len(wins) / len(pnls) * 100 if pnls else 0.0
+        best = max(pnls)
+        worst = min(pnls)
+
+        def _set(key, text, color="#f0f0f0"):
+            self._stat_labels[key].setText(text)
+            self._stat_labels[key].setStyleSheet(f"font-size: 18px; font-weight: bold; color: {color};")
+
+        _set("total", f"{total:+,.2f}", "#22c55e" if total >= 0 else "#ef4444")
+        _set("win_rate", f"{win_rate:.0f}%", "#f0f0f0")
+        _set("avg", f"{total/len(pnls):+,.2f}", "#22c55e" if total >= 0 else "#ef4444")
+        _set("best", f"{best:+,.2f}", "#22c55e")
+        _set("worst", f"{worst:+,.2f}", "#ef4444")
+        _set("days", str(len(pnls)), "#f0f0f0")
 
     def _prev_month(self):
         if self._current_month == 1:
