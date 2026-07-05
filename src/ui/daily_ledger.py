@@ -7,7 +7,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QGridLayout, QWidget, QSizePolicy,
+    QPushButton, QGridLayout, QWidget, QSizePolicy, QComboBox,
 )
 
 from src.db.local_store import LocalStore
@@ -26,8 +26,9 @@ class DailyLedgerDialog(QDialog):
     def __init__(self, store: LocalStore, parent=None):
         super().__init__(parent)
         self._store = store
-        self._current_year = datetime.now().year
-        self._current_month = datetime.now().month
+        now = datetime.now()
+        self._current_year = now.year
+        self._current_month = now.month
         self._baselines = {b["date"]: b["equity_usdt"] for b in store.get_all_baselines()}
         self._daily_pnls: dict[str, float] = {}
         self._compute_pnls()
@@ -61,10 +62,21 @@ class DailyLedgerDialog(QDialog):
         self._prev_btn.clicked.connect(self._prev_month)
         nav.addWidget(self._prev_btn)
 
-        self._title = QLabel()
-        self._title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._title.setStyleSheet("font-size: 24px; font-weight: bold;")
-        nav.addWidget(self._title, 1)
+        self._month_combo = QComboBox()
+        self._month_combo.addItems([calendar.month_name[m] for m in range(1, 13)])
+        self._month_combo.setCurrentIndex(self._current_month - 1)
+        self._month_combo.setStyleSheet("font-size: 18px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; color: #f0f0f0; padding: 6px 12px;")
+        self._month_combo.currentIndexChanged.connect(self._combo_changed)
+        nav.addWidget(self._month_combo)
+
+        self._year_combo = QComboBox()
+        cy = datetime.now().year
+        for y in range(cy - 5, cy + 2):
+            self._year_combo.addItem(str(y))
+        self._year_combo.setCurrentText(str(self._current_year))
+        self._year_combo.setStyleSheet("font-size: 18px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; color: #f0f0f0; padding: 6px 12px;")
+        self._year_combo.currentTextChanged.connect(self._combo_changed)
+        nav.addWidget(self._year_combo)
 
         self._next_btn = QPushButton("▶")
         self._next_btn.setFixedWidth(52)
@@ -95,7 +107,12 @@ class DailyLedgerDialog(QDialog):
                 if self._grid.getItemPosition(i)[0] > 0:
                     w.setParent(None)
 
-        self._title.setText(f"{calendar.month_name[self._current_month]} {self._current_year}")
+        self._month_combo.blockSignals(True)
+        self._month_combo.setCurrentIndex(self._current_month - 1)
+        self._month_combo.blockSignals(False)
+        self._year_combo.blockSignals(True)
+        self._year_combo.setCurrentText(str(self._current_year))
+        self._year_combo.blockSignals(False)
 
         cal = calendar.Calendar()
         month_days = cal.monthdays2calendar(self._current_year, self._current_month)
@@ -151,6 +168,11 @@ class DailyLedgerDialog(QDialog):
             vbox.addWidget(val_lbl)
 
         return w
+
+    def _combo_changed(self):
+        self._current_month = self._month_combo.currentIndex() + 1
+        self._current_year = int(self._year_combo.currentText())
+        self._render_month()
 
     def _prev_month(self):
         if self._current_month == 1:
