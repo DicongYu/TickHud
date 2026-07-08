@@ -86,6 +86,14 @@ class LocalStore:
             )
             return cur.fetchone()[0]
 
+    def get_transfer_sum_between(self, since_date: str, until_date: str) -> float:
+        with self._lock:
+            cur = self._conn.execute(
+                "SELECT COALESCE(SUM(amount), 0) FROM transfers WHERE ts >= ? AND ts < ?",
+                (since_date, until_date),
+            )
+            return cur.fetchone()[0]
+
     def get_all_baselines(self) -> list[dict]:
         with self._lock:
             cur = self._conn.execute(

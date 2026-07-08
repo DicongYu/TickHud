@@ -47,7 +47,9 @@ class DailyLedgerDialog(QDialog):
             curr_date = sorted_dates[i]
             eq_prev = self._baselines[prev_date]
             eq_curr = self._baselines[curr_date]
-            net = self._store.get_transfer_sum_since(prev_date + "T00:00:00")
+            net = self._store.get_transfer_sum_between(
+                prev_date + "T00:00:00", curr_date + "T00:00:00"
+            )
             self._daily_pnls[curr_date] = round(eq_curr - eq_prev - net, 2)
 
     def _build_ui(self):
@@ -147,12 +149,22 @@ class DailyLedgerDialog(QDialog):
         cal = calendar.Calendar()
         month_days = cal.monthdays2calendar(self._current_year, self._current_month)
 
-        for row_idx, week in enumerate(month_days):
+        grid_row = 1
+        for week_idx, week in enumerate(month_days):
             for col_idx, (day_num, _) in enumerate(week):
                 if day_num == 0:
                     continue
                 cell = self._make_cell(day_num)
-                self._grid.addWidget(cell, row_idx + 1, col_idx)
+                self._grid.addWidget(cell, grid_row, col_idx)
+
+            if week_idx < len(month_days) - 1:
+                sep = QFrame()
+                sep.setFrameShape(QFrame.Shape.HLine)
+                sep.setStyleSheet("color: #2a2a2a;")
+                self._grid.addWidget(sep, grid_row + 1, 0, 1, 7)
+                grid_row += 2
+            else:
+                grid_row += 1
 
         self._update_stats()
 
@@ -183,6 +195,16 @@ class DailyLedgerDialog(QDialog):
             clr_bg = "#1a1a2e"
 
         w.setStyleSheet(f"background: {clr_bg}; border-radius: 6px;")
+
+        equity = self._baselines.get(date_str)
+        tip_parts = [f"Date:  {date_str}"]
+        if equity is not None:
+            tip_parts.append(f"Equity: {equity:.2f} USDT")
+        if pnl is not None:
+            tip_parts.append(f"PnL:   {pnl:+.2f} USDT")
+        else:
+            tip_parts.append("PnL:   — (first day)")
+        w.setToolTip("\n".join(tip_parts))
 
         vbox = QVBoxLayout(w)
         vbox.setContentsMargins(4, 6, 4, 6)
