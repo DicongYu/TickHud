@@ -80,6 +80,7 @@ class MarketSnapshot:
     open_pnl_pct: float = 0.0
     daily_pnl: float = 0.0
     daily_pnl_pct: float = 0.0
+    realized_pnl: float = 0.0
     connected: bool = False
     timestamp: float = 0.0
     latency_ms: float = 0.0
@@ -101,6 +102,9 @@ class DataEngine:
         self._baseline_equity: Optional[float] = None
         self._net_deposit: float = 0.0
         self._baseline_date: Optional[str] = None
+
+        self._midnight_realized_pnl: float = 0.0  # total realized PnL at midnight
+        self._daily_realized_pnl: float = 0.0      # today's realized PnL (current - midnight)
 
         self._prev_equity: float = 0.0
         self._prev_open_pnl: float = 0.0
@@ -129,6 +133,8 @@ class DataEngine:
         self._baseline_equity = equity
         self._baseline_date = date_str
         self._net_deposit = net_deposit
+        self._midnight_realized_pnl = self._compute_realized_pnl()
+        self._daily_realized_pnl = 0.0
 
     def has_baseline(self) -> bool:
         return self._baseline_equity is not None
@@ -315,6 +321,7 @@ class DataEngine:
             open_pnl_pct=0.0,
             daily_pnl=0.0,
             daily_pnl_pct=0.0,
+            realized_pnl=0.0,
             connected=False,
             timestamp=time.time(),
         )
@@ -323,7 +330,8 @@ class DataEngine:
     def _publish(self):
         eq, eq_pct = self._compute_equity()
         op, op_pct = self._compute_open_pnl()
-        dp, dp_pct = self._compute_daily_pnl(eq)
+        rp = self._compute_realized_pnl()
+        dp, dp_pct = self._compute_daily_pnl(rp)
 
         self._detect_transfer(eq, op)
 
@@ -334,6 +342,7 @@ class DataEngine:
             open_pnl_pct=op_pct,
             daily_pnl=dp,
             daily_pnl_pct=dp_pct,
+            realized_pnl=rp,
             connected=self._connected,
             timestamp=time.time(),
             latency_ms=self._latency_ms,
@@ -434,11 +443,19 @@ class DataEngine:
         avg_pct = weighted_pct / count if count else 0.0
         return round(total_pnl, 2), round(avg_pct, 2)
 
-    def _compute_daily_pnl(self, current_equity: float) -> tuple[float, float]:
-        if self._baseline_equity is None:
-            return 0.0, 0.0
-        pnl = current_equity - self._baseline_equity - self._net_deposit
-        pct = 0.0
-        if self._baseline_equity != 0:
-            pct = pnl / abs(self._baseline_equity) * 100
-        return round(pnl, 2), round(pct, 2)
+    def _compute_realized_pnl(self) -> float:
+        info = self._balance_raw.get("info", {})
+        data = info.get("data", [{}]) if isinstance(info, dict) else [{}]
+        if not data or not isinstance(data, list):
+            return 0.0
+        total = 0.0
+        for acct in data:
+            for d in acct.get("details", []):
+                pnl_str = d.get("totalPnl", "0")
+                if pnl_str:
+                    total += self._safe_float(pnl_str)
+        return round(total, 2)
+
+    def _compute_daily_pnl(self, realized_pnl: float) -> tuple[float, float]:
+        pnl = realized_pnl - self._midnight_realized_pnl
+        return round(pnl, 2), 0.0

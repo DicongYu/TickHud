@@ -95,16 +95,17 @@ async def main_async(app: QApplication, use_mock: bool = False):
             bl_eq = latest["equity_usdt"]
             ratio = abs(bl_eq - current_eq) / max(bl_eq, 1)
             if ratio < 0.2:
-                net_deposit = store.get_transfer_sum_since(today)
-                engine.set_baseline(bl_eq, today, net_deposit)
+                engine.set_baseline(bl_eq, today, 0.0)
                 logger.info("Restored baseline %s: %.2f", today, bl_eq)
             else:
                 logger.warning("Baseline %.2f differs from equity %.2f (%.0f%%), overwriting", bl_eq, current_eq, ratio * 100)
-                store.save_baseline(today, current_eq)
+                realized = engine._compute_realized_pnl()
+                store.save_baseline(today, current_eq, realized_pnl=realized)
                 engine.set_baseline(current_eq, today, 0.0)
                 logger.info("Auto-set baseline to current equity: %.2f", current_eq)
         elif current_eq > 0:
-            store.save_baseline(today, current_eq)
+            realized = engine._compute_realized_pnl()
+            store.save_baseline(today, current_eq, realized_pnl=realized)
             engine.set_baseline(current_eq, today, 0.0)
             logger.info("First launch: baseline set to current equity: %.2f", current_eq)
 
@@ -123,10 +124,11 @@ async def main_async(app: QApplication, use_mock: bool = False):
 
                 snap = engine.snapshot
                 date_str = next_midnight.strftime("%Y-%m-%d")
-                store.save_baseline(date_str, snap.equity)
+                realized = engine._compute_realized_pnl()
+                store.save_baseline(date_str, snap.equity, realized_pnl=realized)
                 engine.set_baseline(snap.equity, date_str, 0.0)
                 store.save_snapshot(snap.equity, snap.open_pnl, snap.daily_pnl)
-                logger.info("Midnight baseline saved: %s %.2f", date_str, snap.equity)
+                logger.info("Midnight baseline saved: %s eq=%.2f realized=%.2f", date_str, snap.equity, realized)
 
         baseline_task = asyncio.create_task(midnight_baseline_loop())
     else:

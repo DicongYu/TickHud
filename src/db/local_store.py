@@ -34,6 +34,7 @@ class LocalStore:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 date TEXT NOT NULL UNIQUE,
                 equity_usdt REAL NOT NULL,
+                realized_pnl REAL DEFAULT 0,
                 created_at TEXT NOT NULL
             );
             CREATE TABLE IF NOT EXISTS transfers (
@@ -50,6 +51,10 @@ class LocalStore:
                 daily_pnl REAL NOT NULL
             );
         """)
+        try:
+            self._conn.execute("ALTER TABLE baseline ADD COLUMN realized_pnl REAL DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass
         self._conn.commit()
 
     def get_latest_baseline(self) -> Optional[dict]:
@@ -60,12 +65,12 @@ class LocalStore:
             row = cur.fetchone()
             return dict(row) if row else None
 
-    def save_baseline(self, date: str, equity_usdt: float):
+    def save_baseline(self, date: str, equity_usdt: float, realized_pnl: float = 0.0):
         now = datetime.now(timezone.utc).isoformat()
         with self._lock:
             self._conn.execute(
-                "INSERT OR REPLACE INTO baseline (date, equity_usdt, created_at) VALUES (?, ?, ?)",
-                (date, equity_usdt, now),
+                "INSERT OR REPLACE INTO baseline (date, equity_usdt, realized_pnl, created_at) VALUES (?, ?, ?, ?)",
+                (date, equity_usdt, realized_pnl, now),
             )
             self._conn.commit()
 

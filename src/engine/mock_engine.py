@@ -85,6 +85,7 @@ class MockEngine:
                 open_pnl_pct=round(op_pct, 2),
                 daily_pnl=round(dp, 2),
                 daily_pnl_pct=round(dp_pct, 2),
+                realized_pnl=0.0,
                 connected=True,
                 timestamp=time.time(),
             )

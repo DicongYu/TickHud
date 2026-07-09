@@ -29,7 +29,13 @@ class DailyLedgerDialog(QDialog):
         now = datetime.now()
         self._current_year = now.year
         self._current_month = now.month
-        self._baselines = {b["date"]: b["equity_usdt"] for b in store.get_all_baselines()}
+        rows = store.get_all_baselines()
+        self._baselines = {b["date"]: b["equity_usdt"] for b in rows}
+        self._realized_pnls: dict[str, float] = {}
+        for b in rows:
+            rp = b.get("realized_pnl")
+            if rp is not None and rp != 0:
+                self._realized_pnls[b["date"]] = rp
         self._daily_pnls: dict[str, float] = {}
         self._compute_pnls()
 
@@ -41,16 +47,13 @@ class DailyLedgerDialog(QDialog):
         self._render_month()
 
     def _compute_pnls(self):
-        sorted_dates = sorted(self._baselines.keys())
-        for i in range(1, len(sorted_dates)):
-            prev_date = sorted_dates[i - 1]
-            curr_date = sorted_dates[i]
-            eq_prev = self._baselines[prev_date]
-            eq_curr = self._baselines[curr_date]
-            net = self._store.get_transfer_sum_between(
-                prev_date + "T00:00:00", curr_date + "T00:00:00"
-            )
-            self._daily_pnls[curr_date] = round(eq_curr - eq_prev - net, 2)
+        sorted_dates = sorted(self._realized_pnls.keys())
+        prev_realized = None
+        for date in sorted_dates:
+            curr_realized = self._realized_pnls[date]
+            if prev_realized is not None:
+                self._daily_pnls[date] = round(curr_realized - prev_realized, 2)
+            prev_realized = curr_realized
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
