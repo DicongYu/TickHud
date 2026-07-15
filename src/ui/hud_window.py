@@ -3,9 +3,10 @@ from __future__ import annotations
 import datetime
 import os
 import sys
+from pathlib import Path
 
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QFontDatabase, QMouseEvent, QShortcut, QKeySequence
+from PyQt6.QtGui import QFontDatabase, QMouseEvent
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QMainWindow, QPushButton, QSizeGrip, QApplication,
@@ -15,6 +16,7 @@ from src.engine.data_engine import DataEngine
 from src.ui.settings_dialog import SettingsDialog
 from src.ui.daily_ledger import DailyLedgerDialog
 from src.db.local_store import LocalStore
+from src.config.settings import DATA_DIR
 
 GREEN = "#22c55e"
 RED = "#ef4444"
@@ -139,6 +141,8 @@ class HudWindow(QMainWindow):
         self._engine = engine
         self._store = store
 
+        self._cmd_file = DATA_DIR / "cmd"
+
         self._init_font()
         self._setup_window()
         self._build_ui()
@@ -169,7 +173,6 @@ class HudWindow(QMainWindow):
             | Qt.WindowType.WindowStaysOnTopHint
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, False)
-        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setMinimumSize(BASE_W, BASE_H)
         self.setMaximumSize(BASE_W * 2, BASE_H * 2)
         self.resize(BASE_W, BASE_H)
@@ -252,11 +255,6 @@ class HudWindow(QMainWindow):
 
         self._apply_scale()
 
-        if "--test" in sys.argv or os.environ.get("TICKHUD_DATA_DIR"):
-            if hasattr(self._engine, "close_half"):
-                sc = QShortcut(QKeySequence("H"), self)
-                sc.activated.connect(self._on_close_half)
-
     def _apply_scale(self):
         w = self.width()
         h = self.height()
@@ -283,6 +281,11 @@ class HudWindow(QMainWindow):
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._poll_data)
         self._timer.start(100)
+
+        if hasattr(self._engine, "close_half"):
+            self._cmd_timer = QTimer(self)
+            self._cmd_timer.timeout.connect(self._poll_cmd)
+            self._cmd_timer.start(300)
 
     def _poll_data(self):
         snap = self._engine.snapshot
@@ -330,12 +333,24 @@ class HudWindow(QMainWindow):
         d = DailyLedgerDialog(self._store, engine=self._engine, parent=self)
         d.exec()
 
-    def _on_close_half(self):
-        self._engine.close_half()
-        s = self._engine.snapshot
-        self._status.setText(f"H: close half → OPEN {s.open_pnl:+.1f}, DAILY {s.daily_pnl:+.1f}")
-        self._status.setStyleSheet("color: #22c55e;")
-        QTimer.singleShot(2000, self._restore_status)
+    def _poll_cmd(self):
+        try:
+            if not self._cmd_file.exists():
+                return
+            raw = self._cmd_file.read_text().strip()
+            if not raw:
+                return
+            self._cmd_file.write_text("")
+            parts = raw.split(maxsplit=1)
+            cmd = parts[0]
+            if cmd == "close_half":
+                self._engine.close_half()
+                s = self._engine.snapshot
+                self._status.setText(f"close_half → OPEN {s.open_pnl:+.1f}, DAILY {s.daily_pnl:+.1f}")
+                self._status.setStyleSheet("color: #22c55e;")
+                QTimer.singleShot(2000, self._restore_status)
+        except Exception:
+            pass
 
     def _restore_status(self):
         lat = self._engine.snapshot.latency_ms
