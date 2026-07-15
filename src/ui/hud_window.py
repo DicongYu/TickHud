@@ -5,7 +5,7 @@ import os
 import sys
 
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QFontDatabase, QMouseEvent
+from PyQt6.QtGui import QFontDatabase, QMouseEvent, QShortcut, QKeySequence
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QMainWindow, QPushButton, QSizeGrip, QApplication,
@@ -252,6 +252,11 @@ class HudWindow(QMainWindow):
 
         self._apply_scale()
 
+        if "--test" in sys.argv or os.environ.get("TICKHUD_DATA_DIR"):
+            if hasattr(self._engine, "close_half"):
+                sc = QShortcut(QKeySequence("H"), self)
+                sc.activated.connect(self._on_close_half)
+
     def _apply_scale(self):
         w = self.width()
         h = self.height()
@@ -325,15 +330,20 @@ class HudWindow(QMainWindow):
         d = DailyLedgerDialog(self._store, engine=self._engine, parent=self)
         d.exec()
 
-    def keyPressEvent(self, event):
-        if event.key() == Qt.Key.Key_H and ("--test" in sys.argv or os.environ.get("TICKHUD_DATA_DIR")):
-            if hasattr(self._engine, "close_half"):
-                self._engine.close_half()
-                self._status.setText(f"H: close half → OPEN {self._engine.snapshot.open_pnl:+.1f}, DAILY {self._engine.snapshot.daily_pnl:+.1f}")
-                self._status.setStyleSheet("color: #22c55e;")
-            event.accept()
-            return
-        super().keyPressEvent(event)
+    def _on_close_half(self):
+        self._engine.close_half()
+        s = self._engine.snapshot
+        self._status.setText(f"H: close half → OPEN {s.open_pnl:+.1f}, DAILY {s.daily_pnl:+.1f}")
+        self._status.setStyleSheet("color: #22c55e;")
+        QTimer.singleShot(2000, self._restore_status)
+
+    def _restore_status(self):
+        lat = self._engine.snapshot.latency_ms
+        if self._engine.snapshot.connected:
+            now = datetime.datetime.now().strftime("%H:%M")
+            tag = "  [TEST]" if "--test" in sys.argv or os.environ.get("TICKHUD_DATA_DIR") else ""
+            self._status.setText(f"● LIVE  {now}  {lat:.0f}ms{tag}")
+            self._status.setStyleSheet("color: #22c55e;")
 
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton:
