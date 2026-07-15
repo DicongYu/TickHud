@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import math
+import random
 import time
 from queue import Queue
 from typing import Optional
@@ -62,6 +63,8 @@ class MockEngine:
 
     async def _simulate_loop(self):
         eq = self._baseline_equity or 10000.0
+        random.seed(42)
+        close_counter = 0
 
         while self._running:
             self._t += 0.01
@@ -70,8 +73,11 @@ class MockEngine:
             eq = b + 30 * math.sin(self._t * 0.08) + 8 * math.sin(self._t * 0.3)
             op = 15 * math.sin(self._t * 0.1 + 0.5) + 3 * math.sin(self._t * 0.4)
 
-            # realized PnL drifts upward slowly (simulating occasional profitable closes)
-            self._realized_pnl += 0.02 * math.sin(self._t * 0.02) + 0.005
+            # realized PnL: mostly static, jumps occasionally (simulating a close)
+            close_counter += 1
+            if close_counter >= 200:  # every ~20s
+                close_counter = 0
+                self._realized_pnl += random.uniform(-3, 8)
 
             dp = self._realized_pnl - self._midnight_realized_pnl
 
