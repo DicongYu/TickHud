@@ -37,11 +37,6 @@ class DailyLedgerDialog(QDialog):
         self._current_month = now.month
         rows = store.get_all_baselines()
         self._baselines = {b["date"]: b["equity_usdt"] for b in rows}
-        self._realized_pnls: dict[str, float] = {}
-        for b in rows:
-            rp = b.get("realized_pnl")
-            if rp is not None and rp != 0:
-                self._realized_pnls[b["date"]] = rp
         self._daily_pnls: dict[str, float] = {}
         self._compute_pnls()
 
@@ -95,18 +90,17 @@ class DailyLedgerDialog(QDialog):
             return
         self._store.clear_all()
         self._baselines.clear()
-        self._realized_pnls.clear()
         self._daily_pnls.clear()
         self._render_month()
 
     def _compute_pnls(self):
-        sorted_dates = sorted(self._realized_pnls.keys())
-        prev_realized = None
+        sorted_dates = sorted(self._baselines.keys())
+        prev_eq = None
         for date in sorted_dates:
-            curr_realized = self._realized_pnls[date]
-            if prev_realized is not None:
-                self._daily_pnls[date] = round(curr_realized - prev_realized, 2)
-            prev_realized = curr_realized
+            curr_eq = self._baselines[date]
+            if prev_eq is not None:
+                self._daily_pnls[date] = round(curr_eq - prev_eq, 2)
+            prev_eq = curr_eq
 
     def _build_ui(self):
         layout = QVBoxLayout(self)

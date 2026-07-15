@@ -106,9 +106,6 @@ class DataEngine:
         self._net_deposit: float = 0.0
         self._baseline_date: Optional[str] = None
 
-        self._midnight_realized_pnl: float = 0.0  # total realized PnL at midnight
-        self._daily_realized_pnl: float = 0.0      # today's realized PnL (current - midnight)
-
         self._prev_equity: float = 0.0
         self._prev_open_pnl: float = 0.0
         self._grid_float_pnl: float = 0.0
@@ -133,12 +130,10 @@ class DataEngine:
     def snapshot(self) -> MarketSnapshot:
         return self._snapshot
 
-    def set_baseline(self, equity: float, date_str: str, net_deposit: float = 0.0, midnight_realized_pnl: float | None = None):
+    def set_baseline(self, equity: float, date_str: str, net_deposit: float = 0.0):
         self._baseline_equity = equity
         self._baseline_date = date_str
         self._net_deposit = net_deposit
-        self._midnight_realized_pnl = self._compute_realized_pnl() if midnight_realized_pnl is None else midnight_realized_pnl
-        self._daily_realized_pnl = 0.0
 
     def has_baseline(self) -> bool:
         return self._baseline_equity is not None
@@ -357,7 +352,7 @@ class DataEngine:
         eq, eq_pct = self._compute_equity()
         op, op_pct = self._compute_open_pnl()
         rp = self._compute_realized_pnl()
-        dp, dp_pct = self._compute_daily_pnl(rp)
+        dp, dp_pct = self._compute_daily_pnl(eq)
 
         self._log_kpi_counter = getattr(self, "_log_kpi_counter", 0) + 1
         if self._log_kpi_counter >= 30:
@@ -485,6 +480,8 @@ class DataEngine:
                     total += self._safe_float(pnl_str)
         return round(total, 2)
 
-    def _compute_daily_pnl(self, realized_pnl: float) -> tuple[float, float]:
-        pnl = realized_pnl - self._midnight_realized_pnl
+    def _compute_daily_pnl(self, equity: float) -> tuple[float, float]:
+        if self._baseline_equity is None:
+            return 0.0, 0.0
+        pnl = equity - self._baseline_equity - self._net_deposit
         return round(pnl, 2), 0.0
