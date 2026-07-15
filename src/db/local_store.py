@@ -119,3 +119,10 @@ class LocalStore:
         with self._lock:
             self._conn.execute("DELETE FROM baseline")
             self._conn.commit()
+
+    def clear_all(self):
+        with self._lock:
+            self._conn.execute("DELETE FROM baseline")
+            self._conn.execute("DELETE FROM transfers")
+            self._conn.execute("DELETE FROM snapshots")
+            self._conn.commit()

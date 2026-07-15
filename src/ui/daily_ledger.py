@@ -9,7 +9,7 @@ from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QGridLayout, QWidget, QSizePolicy, QComboBox, QFrame,
+    QPushButton, QGridLayout, QWidget, QSizePolicy, QComboBox, QFrame, QMessageBox,
 )
 
 from src.db.local_store import LocalStore
@@ -83,6 +83,22 @@ class DailyLedgerDialog(QDialog):
             )
         self._update_stats()
 
+    def _reset_ledger(self):
+        ret = QMessageBox.warning(
+            self, "Reset Ledger",
+            "Clear all baseline, transfer, and snapshot history?\n\n"
+            "This cannot be undone. Data will rebuild from the next poll cycle.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if ret != QMessageBox.StandardButton.Yes:
+            return
+        self._store.clear_all()
+        self._baselines.clear()
+        self._realized_pnls.clear()
+        self._daily_pnls.clear()
+        self._render_month()
+
     def _compute_pnls(self):
         sorted_dates = sorted(self._realized_pnls.keys())
         prev_realized = None
@@ -126,6 +142,14 @@ class DailyLedgerDialog(QDialog):
         self._next_btn.setStyleSheet("font-size: 18px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; color: #f0f0f0;")
         self._next_btn.clicked.connect(self._next_month)
         nav.addWidget(self._next_btn)
+
+        nav.addStretch()
+
+        reset_btn = QPushButton("× Reset Ledger")
+        reset_btn.setStyleSheet("font-size: 13px; background: #1a0000; border: 1px solid #4a0000; border-radius: 4px; color: #ef4444; padding: 6px 14px;")
+        reset_btn.clicked.connect(self._reset_ledger)
+        nav.addWidget(reset_btn)
+
         layout.addLayout(nav)
 
         layout.addSpacing(12)
