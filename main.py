@@ -46,14 +46,17 @@ def _seed_test_data(store: LocalStore):
     random.seed(42)
     today = datetime.date.today()
     eq = 10000.0
+    rp = 0.0
     store.clear_all_baselines()
     for i in range(45, -1, -1):
         d = today - datetime.timedelta(days=i)
         date_str = d.strftime("%Y-%m-%d")
         change = random.uniform(-400, 500)
         eq = max(8000, eq + change)
-        store.save_baseline(date_str, round(eq, 2))
-    store.save_baseline(today.strftime("%Y-%m-%d"), 10000.0)
+        realized_change = random.uniform(-300, 400)
+        rp = max(-2000, rp + realized_change)
+        store.save_baseline(date_str, round(eq, 2), realized_pnl=round(rp, 2))
+    store.save_baseline(today.strftime("%Y-%m-%d"), 10000.0, realized_pnl=round(rp, 2))
     logger.info("Seeded 45 days of test baseline data")
 
 
