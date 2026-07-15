@@ -23,6 +23,9 @@ class MockEngine:
         self._net_deposit: float = 0.0
         self._baseline_date: Optional[str] = None
 
+        self._midnight_realized_pnl: float = 0.0
+        self._realized_pnl: float = 0.0
+
         self._t = 0.0
 
     @property
@@ -33,10 +36,11 @@ class MockEngine:
     def snapshot(self) -> MarketSnapshot:
         return self._snapshot
 
-    def set_baseline(self, equity: float, date_str: str, net_deposit: float = 0.0):
+    def set_baseline(self, equity: float, date_str: str, net_deposit: float = 0.0, midnight_realized_pnl: float | None = None):
         self._baseline_equity = equity
         self._baseline_date = date_str
         self._net_deposit = net_deposit
+        self._midnight_realized_pnl = self._realized_pnl if midnight_realized_pnl is None else midnight_realized_pnl
 
     def has_baseline(self) -> bool:
         return self._baseline_equity is not None
@@ -65,7 +69,11 @@ class MockEngine:
 
             eq = b + 30 * math.sin(self._t * 0.08) + 8 * math.sin(self._t * 0.3)
             op = 15 * math.sin(self._t * 0.1 + 0.5) + 3 * math.sin(self._t * 0.4)
-            dp = eq - b
+
+            # realized PnL drifts upward slowly (simulating occasional profitable closes)
+            self._realized_pnl += 0.02 * math.sin(self._t * 0.02) + 0.005
+
+            dp = self._realized_pnl - self._midnight_realized_pnl
 
             eq_pct = 0
             if self._prev_eq is not None and self._prev_eq != 0:
@@ -85,7 +93,7 @@ class MockEngine:
                 open_pnl_pct=round(op_pct, 2),
                 daily_pnl=round(dp, 2),
                 daily_pnl_pct=round(dp_pct, 2),
-                realized_pnl=0.0,
+                realized_pnl=round(self._realized_pnl, 2),
                 connected=True,
                 timestamp=time.time(),
             )
