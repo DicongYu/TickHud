@@ -23,7 +23,7 @@ BG = "#0d0d0d"
 CARD = "#141414"
 
 BASE_W = 380
-BASE_H = 130
+BASE_H = 100
 
 def _gen_style(s: float = 1.0) -> str:
     def S(v: float) -> str:
@@ -314,7 +314,7 @@ class HudWindow(QMainWindow):
         d.exec()
 
     def _open_ledger(self):
-        d = DailyLedgerDialog(self._store, self)
+        d = DailyLedgerDialog(self._store, engine=self._engine, parent=self)
         d.exec()
 
     def mousePressEvent(self, event: QMouseEvent):

@@ -3,7 +3,7 @@ from __future__ import annotations
 import calendar
 from datetime import datetime
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
@@ -22,10 +22,14 @@ QLabel {
 """
 
 
+GREEN = "#22c55e"
+RED = "#ef4444"
+
 class DailyLedgerDialog(QDialog):
-    def __init__(self, store: LocalStore, parent=None):
+    def __init__(self, store: LocalStore, engine=None, parent=None):
         super().__init__(parent)
         self._store = store
+        self._engine = engine
         now = datetime.now()
         self._current_year = now.year
         self._current_month = now.month
@@ -39,12 +43,40 @@ class DailyLedgerDialog(QDialog):
         self._daily_pnls: dict[str, float] = {}
         self._compute_pnls()
 
+        self._today_cell: QWidget | None = None
+        self._today_pnl_lbl: QLabel | None = None
+        self._today_date_str: str = now.strftime("%Y-%m-%d")
+
         self.setWindowTitle("Daily PnL Ledger")
         self.setMinimumSize(900, 680)
         self.setStyleSheet("background: #0d0d0d; color: #f0f0f0;")
 
         self._build_ui()
         self._render_month()
+
+        if self._engine:
+            self._refresh_timer = QTimer(self)
+            self._refresh_timer.timeout.connect(self._refresh_today)
+            self._refresh_timer.start(1000)
+
+    def _refresh_today(self):
+        if not self._today_pnl_lbl or not self._engine:
+            return
+        snap = self._engine.snapshot
+        dp = snap.daily_pnl
+        if dp is None:
+            return
+        val_txt = f"{dp:+,.2f}"
+        clr = GREEN if dp >= 0 else RED
+        self._today_pnl_lbl.setText(val_txt)
+        self._today_pnl_lbl.setStyleSheet(f"font-size: 11px; color: {clr};")
+        if self._today_cell:
+            prefix = "" if self._engine.has_baseline() else "?"
+            self._today_cell.setToolTip(
+                f"Date:  {self._today_date_str}\n"
+                f"Daily PnL: {prefix}{val_txt}"
+            )
+        self._update_stats()
 
     def _compute_pnls(self):
         sorted_dates = sorted(self._realized_pnls.keys())
@@ -223,6 +255,17 @@ class DailyLedgerDialog(QDialog):
             val_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
             val_lbl.setStyleSheet(f"font-size: 11px; color: {clr_txt};")
             vbox.addWidget(val_lbl)
+        else:
+            val_lbl = None
+
+        if date_str == self._today_date_str:
+            self._today_cell = w
+            if val_lbl is None:
+                val_lbl = QLabel("—")
+                val_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                val_lbl.setStyleSheet("font-size: 11px; color: #666;")
+                vbox.addWidget(val_lbl)
+            self._today_pnl_lbl = val_lbl
 
         return w
 
@@ -233,7 +276,20 @@ class DailyLedgerDialog(QDialog):
 
     def _update_stats(self):
         prefix = f"{self._current_year:04d}-{self._current_month:02d}"
-        pnls = [v for k, v in self._daily_pnls.items() if k.startswith(prefix) and v is not None]
+        pnls = []
+        for k, v in self._daily_pnls.items():
+            if k.startswith(prefix) and v is not None:
+                if self._engine and k == self._today_date_str:
+                    running = self._engine.snapshot.daily_pnl
+                    pnls.append(running if running is not None else v)
+                else:
+                    pnls.append(v)
+
+        # include today's running PnL even if not in archived daily_pnls
+        if self._engine and prefix == self._today_date_str[:7] and self._today_date_str not in self._daily_pnls:
+            running = self._engine.snapshot.daily_pnl
+            if running is not None:
+                pnls.append(running)
 
         if not pnls:
             for lbl in self._stat_labels.values():
