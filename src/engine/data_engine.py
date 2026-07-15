@@ -333,7 +333,10 @@ class DataEngine:
         rp = self._compute_realized_pnl()
         dp, dp_pct = self._compute_daily_pnl(rp)
 
-        logger.info("KPI: equity=%.2f open_pnl=%.2f daily_pnl=%.2f realized_pnl=%.2f", eq, op, dp, rp)
+        self._log_kpi_counter = getattr(self, "_log_kpi_counter", 0) + 1
+        if self._log_kpi_counter >= 30:
+            self._log_kpi_counter = 0
+            logger.info("KPI: equity=%.2f open_pnl=%.2f daily_pnl=%.2f realized_pnl=%.2f", eq, op, dp, rp)
 
         self._detect_transfer(eq, op)
 

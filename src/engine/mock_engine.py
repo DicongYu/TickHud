@@ -98,7 +98,10 @@ class MockEngine:
 
             self._prev_eq = eq
 
-            logger.info("KPI: equity=%.2f open_pnl=%.2f daily_pnl=%.2f realized_pnl=%.2f", eq, op, dp, self._realized_pnl)
+            self._log_kpi_counter = getattr(self, "_log_kpi_counter", 0) + 1
+            if self._log_kpi_counter >= 300:
+                self._log_kpi_counter = 0
+                logger.info("KPI: equity=%.2f open_pnl=%.2f daily_pnl=%.2f realized_pnl=%.2f", eq, op, dp, self._realized_pnl)
 
             self._snapshot = MarketSnapshot(
                 equity=round(eq, 2),
