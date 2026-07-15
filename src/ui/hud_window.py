@@ -348,6 +348,8 @@ class HudWindow(QMainWindow):
                 handler = self._engine.close_half
             elif cmd == "close_all":
                 handler = self._engine.close_all
+            elif cmd == "reset":
+                handler = self._engine.reset
             if handler:
                 handler()
                 s = self._engine.snapshot

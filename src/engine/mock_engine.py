@@ -56,6 +56,10 @@ class MockEngine:
         self._realized_pnl += self._open_pnl
         self._open_pnl = 0.0
 
+    def reset(self):
+        self._open_pnl = 10.0
+        self._realized_pnl = 0.0
+
     async def start(self, api_key: str = "", api_secret: str = "", api_password: str = ""):
         self._running = True
         self._task = asyncio.create_task(self._simulate_loop())
