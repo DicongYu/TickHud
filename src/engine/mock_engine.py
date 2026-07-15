@@ -70,7 +70,7 @@ class MockEngine:
             self._t += 0.01
             b = self._baseline_equity or eq
 
-            op = 15 * math.sin(self._t * 0.03 + 0.5) + 3 * math.sin(self._t * 0.1)
+            op = 10.0
 
             # realized PnL: mostly static, jumps occasionally (simulating a close)
             close_counter += 1
