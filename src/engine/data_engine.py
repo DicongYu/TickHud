@@ -129,11 +129,11 @@ class DataEngine:
     def snapshot(self) -> MarketSnapshot:
         return self._snapshot
 
-    def set_baseline(self, equity: float, date_str: str, net_deposit: float = 0.0):
+    def set_baseline(self, equity: float, date_str: str, net_deposit: float = 0.0, midnight_realized_pnl: float | None = None):
         self._baseline_equity = equity
         self._baseline_date = date_str
         self._net_deposit = net_deposit
-        self._midnight_realized_pnl = self._compute_realized_pnl()
+        self._midnight_realized_pnl = self._compute_realized_pnl() if midnight_realized_pnl is None else midnight_realized_pnl
         self._daily_realized_pnl = 0.0
 
     def has_baseline(self) -> bool:

@@ -95,8 +95,9 @@ async def main_async(app: QApplication, use_mock: bool = False):
             bl_eq = latest["equity_usdt"]
             ratio = abs(bl_eq - current_eq) / max(bl_eq, 1)
             if ratio < 0.2:
-                engine.set_baseline(bl_eq, today, 0.0)
-                logger.info("Restored baseline %s: %.2f", today, bl_eq)
+                mr_pnl = latest.get("realized_pnl")
+                engine.set_baseline(bl_eq, today, 0.0, midnight_realized_pnl=mr_pnl if mr_pnl is not None else None)
+                logger.info("Restored baseline %s: %.2f  midnight_realized=%s", today, bl_eq, mr_pnl)
             else:
                 logger.warning("Baseline %.2f differs from equity %.2f (%.0f%%), overwriting", bl_eq, current_eq, ratio * 100)
                 realized = engine._compute_realized_pnl()
