@@ -60,7 +60,7 @@ class MockEngine:
         eq = self._baseline_equity or 10000.0
 
         while self._running:
-            self._t += 0.1
+            self._t += 0.02
             b = self._baseline_equity or eq
 
             eq = b + 200 * math.sin(self._t * 0.3) + 50 * math.sin(self._t * 1.7)
