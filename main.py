@@ -13,10 +13,12 @@ import signal
 import sys
 from pathlib import Path
 
+from logging.handlers import TimedRotatingFileHandler
+
 import qasync
 from PyQt6.QtWidgets import QApplication
 
-from src.config.settings import load_config, get_db_path
+from src.config.settings import load_config, get_db_path, get_log_path
 from src.db.local_store import LocalStore
 from src.engine.data_engine import DataEngine
 from src.ui.hud_window import HudWindow
@@ -37,6 +39,9 @@ _FMT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 logging.basicConfig(level=logging.INFO, format=_FMT)
 for h in logging.getLogger().handlers:
     h.setFormatter(SensitiveFormatter(_FMT))
+_fh = TimedRotatingFileHandler(get_log_path(), when="midnight", interval=1, backupCount=7)
+_fh.setFormatter(SensitiveFormatter(_FMT))
+logging.getLogger().addHandler(_fh)
 logging.getLogger("ccxt").setLevel(logging.WARNING)
 logger = logging.getLogger("main")
 

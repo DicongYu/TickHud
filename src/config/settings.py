@@ -57,3 +57,8 @@ def save_config(cfg: dict):
 def get_db_path() -> Path:
     ensure_dirs()
     return DATA_DIR / "ledger.db"
+
+
+def get_log_path() -> Path:
+    ensure_dirs()
+    return DATA_DIR / "tickhud.log"

@@ -94,6 +94,8 @@ class MockEngine:
 
             self._prev_eq = eq
 
+            logger.info("KPI: equity=%.2f open_pnl=%.2f daily_pnl=%.2f realized_pnl=%.2f", eq, op, dp, self._realized_pnl)
+
             self._snapshot = MarketSnapshot(
                 equity=round(eq, 2),
                 equity_pct=round(eq_pct, 2),
