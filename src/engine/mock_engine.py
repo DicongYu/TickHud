@@ -63,15 +63,15 @@ class MockEngine:
             self._t += 0.01
             b = self._baseline_equity or eq
 
-            eq = b + 200 * math.sin(self._t * 0.3) + 50 * math.sin(self._t * 1.7)
-            op = 150 * math.sin(self._t * 0.5 + 0.5) + 30 * math.sin(self._t * 2.3)
+            eq = b + 30 * math.sin(self._t * 0.08) + 8 * math.sin(self._t * 0.3)
+            op = 15 * math.sin(self._t * 0.1 + 0.5) + 3 * math.sin(self._t * 0.4)
             dp = eq - b
 
             eq_pct = 0
             if self._prev_eq is not None and self._prev_eq != 0:
                 eq_pct = (eq - self._prev_eq) / abs(self._prev_eq) * 100
             else:
-                eq_pct = 0.5 * math.cos(self._t * 0.3)
+                eq_pct = 0.05 * math.cos(self._t * 0.08)
 
             op_pct = (op / b) * 100 if b else 0
             dp_pct = (dp / b) * 100 if b else 0
