@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import datetime
+import os
+import sys
 
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFontDatabase, QMouseEvent
@@ -158,6 +160,10 @@ class HudWindow(QMainWindow):
 
     def _setup_window(self):
         self.setWindowTitle("TickHUD")
+        title = "TickHUD"
+        if "--test" in sys.argv or os.environ.get("TICKHUD_DATA_DIR"):
+            title += " [TEST]"
+        self.setWindowTitle(title)
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint

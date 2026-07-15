@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import calendar
+import os
+import sys
 from datetime import datetime
 
 from PyQt6.QtCore import Qt, QTimer
@@ -47,7 +49,10 @@ class DailyLedgerDialog(QDialog):
         self._today_pnl_lbl: QLabel | None = None
         self._today_date_str: str = now.strftime("%Y-%m-%d")
 
-        self.setWindowTitle("Daily PnL Ledger")
+        title = "Daily PnL Ledger"
+        if "--test" in sys.argv or os.environ.get("TICKHUD_DATA_DIR"):
+            title += " [TEST]"
+        self.setWindowTitle(title)
         self.setMinimumSize(900, 680)
         self.setStyleSheet("background: #0d0d0d; color: #f0f0f0;")
 
