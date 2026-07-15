@@ -343,10 +343,15 @@ class HudWindow(QMainWindow):
             self._cmd_file.write_text("")
             parts = raw.split(maxsplit=1)
             cmd = parts[0]
+            handler = None
             if cmd == "close_half":
-                self._engine.close_half()
+                handler = self._engine.close_half
+            elif cmd == "close_all":
+                handler = self._engine.close_all
+            if handler:
+                handler()
                 s = self._engine.snapshot
-                self._status.setText(f"close_half → OPEN {s.open_pnl:+.1f}, DAILY {s.daily_pnl:+.1f}")
+                self._status.setText(f"{cmd} → OPEN {s.open_pnl:+.1f}, DAILY {s.daily_pnl:+.1f}")
                 self._status.setStyleSheet("color: #22c55e;")
                 QTimer.singleShot(2000, self._restore_status)
         except Exception:
