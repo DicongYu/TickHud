@@ -169,6 +169,7 @@ class HudWindow(QMainWindow):
             | Qt.WindowType.WindowStaysOnTopHint
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, False)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setMinimumSize(BASE_W, BASE_H)
         self.setMaximumSize(BASE_W * 2, BASE_H * 2)
         self.resize(BASE_W, BASE_H)
@@ -328,6 +329,10 @@ class HudWindow(QMainWindow):
         if event.key() == Qt.Key.Key_H and ("--test" in sys.argv or os.environ.get("TICKHUD_DATA_DIR")):
             if hasattr(self._engine, "close_half"):
                 self._engine.close_half()
+                self._status.setText(f"H: close half → OPEN {self._engine.snapshot.open_pnl:+.1f}, DAILY {self._engine.snapshot.daily_pnl:+.1f}")
+                self._status.setStyleSheet("color: #22c55e;")
+            event.accept()
+            return
         super().keyPressEvent(event)
 
     def mousePressEvent(self, event: QMouseEvent):
