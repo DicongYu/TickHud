@@ -71,6 +71,9 @@ class OkxRestClient:
     async def fetch_positions(self) -> dict:
         return await self._get("/api/v5/account/positions")
 
+    async def fetch_active_grids(self, algo_ord_type: str = "contract_grid") -> dict:
+        return await self._get(f"/api/v5/tradingBot/grid/orders-algo-pending?algoOrdType={algo_ord_type}")
+
 
 @dataclass
 class MarketSnapshot:
@@ -108,6 +111,7 @@ class DataEngine:
 
         self._prev_equity: float = 0.0
         self._prev_open_pnl: float = 0.0
+        self._grid_float_pnl: float = 0.0
         self._connected = False
         self._last_update: float = 0.0
         self._latency_ms: float = 0.0
@@ -150,6 +154,7 @@ class DataEngine:
             asyncio.create_task(self._watch_balance_loop()),
             asyncio.create_task(self._watch_positions_loop()),
             asyncio.create_task(self._connection_monitor()),
+            asyncio.create_task(self._fetch_grids_loop()),
         ]
         logger.info("DataEngine started (mode=ws)")
 
@@ -305,6 +310,27 @@ class DataEngine:
             pass
         self._exchange = self._new_exchange()
 
+    async def _fetch_grids_loop(self):
+        while self._running:
+            await asyncio.sleep(5)
+            if not self._connected:
+                continue
+            try:
+                await self._fetch_grids()
+            except Exception as e:
+                logger.warning("Grid fetch error: %s", e)
+
+    async def _fetch_grids(self):
+        if not self._rest_client:
+            self._rest_client = self._make_rest_client()
+        total_float = 0.0
+        for typ in ("contract_grid", "grid"):
+            raw = await self._rest_client.fetch_active_grids(typ)
+            for g in raw.get("data", []):
+                fp = self._safe_float(g.get("floatProfit", "0"))
+                total_float += fp
+        self._grid_float_pnl = total_float
+
     async def _connection_monitor(self):
         while self._running:
             await asyncio.sleep(2)
@@ -427,23 +453,21 @@ class DataEngine:
         return 0.0
 
     def _compute_open_pnl(self) -> tuple[float, float]:
-        if not self._positions_raw:
-            return 0.0, 0.0
-
-        total_pnl = 0.0
+        total_pnl = self._grid_float_pnl
         weighted_pct = 0.0
         count = 0
 
-        for pos in self._positions_raw:
-            upnl = pos.get("upl") or pos.get("unrealizedPnl") or 0
-            total_pnl += self._safe_float(upnl)
+        if self._positions_raw:
+            for pos in self._positions_raw:
+                upnl = pos.get("upl") or pos.get("unrealizedPnl") or 0
+                total_pnl += self._safe_float(upnl)
 
-            pct_raw = pos.get("uplRatio") or pos.get("percentage")
-            if pct_raw is not None:
-                pct_f = self._safe_float(pct_raw)
-                if pct_f != 0:
-                    weighted_pct += pct_f * (100 if self._exchange_name == "okx" else 1)
-                    count += 1
+                pct_raw = pos.get("uplRatio") or pos.get("percentage")
+                if pct_raw is not None:
+                    pct_f = self._safe_float(pct_raw)
+                    if pct_f != 0:
+                        weighted_pct += pct_f * (100 if self._exchange_name == "okx" else 1)
+                        count += 1
 
         avg_pct = weighted_pct / count if count else 0.0
         return round(total_pnl, 2), round(avg_pct, 2)
