@@ -324,6 +324,12 @@ class HudWindow(QMainWindow):
         d = DailyLedgerDialog(self._store, engine=self._engine, parent=self)
         d.exec()
 
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_H and ("--test" in sys.argv or os.environ.get("TICKHUD_DATA_DIR")):
+            if hasattr(self._engine, "close_half"):
+                self._engine.close_half()
+        super().keyPressEvent(event)
+
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton:
             self._drag_pos = event.globalPosition().toPoint()

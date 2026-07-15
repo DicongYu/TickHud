@@ -26,6 +26,7 @@ class MockEngine:
 
         self._midnight_realized_pnl: float = 0.0
         self._realized_pnl: float = 0.0
+        self._open_pnl: float = 10.0
 
         self._t = 0.0
 
@@ -45,6 +46,11 @@ class MockEngine:
 
     def has_baseline(self) -> bool:
         return self._baseline_equity is not None
+
+    def close_half(self):
+        half = self._open_pnl / 2
+        self._realized_pnl += half
+        self._open_pnl = half
 
     async def start(self, api_key: str = "", api_secret: str = "", api_password: str = ""):
         self._running = True
@@ -68,7 +74,7 @@ class MockEngine:
             self._t += 0.01
             b = self._baseline_equity or eq
 
-            op = 10.0
+            op = self._open_pnl
 
             dp = self._realized_pnl - self._midnight_realized_pnl
             eq = b + op + self._realized_pnl  # equity = baseline + open + realized
