@@ -70,13 +70,13 @@ class MockEngine:
             self._t += 0.01
             b = self._baseline_equity or eq
 
-            op = 15 * math.sin(self._t * 0.1 + 0.5) + 3 * math.sin(self._t * 0.4)
+            op = 15 * math.sin(self._t * 0.03 + 0.5) + 3 * math.sin(self._t * 0.1)
 
             # realized PnL: mostly static, jumps occasionally (simulating a close)
             close_counter += 1
-            if close_counter >= 200:
+            if close_counter >= 500:
                 close_counter = 0
-                self._realized_pnl += random.uniform(-3, 8)
+                self._realized_pnl += random.uniform(-1, 3)
 
             dp = self._realized_pnl - self._midnight_realized_pnl
             eq = b + op + self._realized_pnl  # equity = baseline + open + realized
