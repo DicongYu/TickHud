@@ -11,6 +11,7 @@ import logging
 import re
 import signal
 import sys
+from pathlib import Path
 
 import qasync
 from PyQt6.QtWidgets import QApplication
@@ -158,6 +159,16 @@ def main():
     use_mock = "--test" in sys.argv
     if "--test" in sys.argv:
         sys.argv.remove("--test")
+    custom_cfg = None
+    for a in list(sys.argv):
+        if a.startswith("--config="):
+            custom_cfg = a.split("=", 1)[1]
+            sys.argv.remove(a)
+
+    if custom_cfg:
+        import src.config.settings as s
+        s.CONFIG_FILE = Path(custom_cfg)
+        s.CONFIG_DIR = s.CONFIG_FILE.parent
 
     app = QApplication(sys.argv)
     app.setApplicationName("tickhud")

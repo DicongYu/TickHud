@@ -8,8 +8,10 @@ from pathlib import Path
 from src.config.crypto import encrypt_value, decrypt_value
 
 APP_NAME = "tickhud"
-CONFIG_DIR = Path.home() / ".config" / APP_NAME
-DATA_DIR = Path.home() / ".local" / "share" / APP_NAME
+BASE_CONFIG_DIR = Path.home() / ".config" / APP_NAME
+BASE_DATA_DIR = Path.home() / ".local" / "share" / APP_NAME
+CONFIG_DIR = Path(os.environ.get("TICKHUD_CONFIG_DIR", str(BASE_CONFIG_DIR)))
+DATA_DIR = Path(os.environ.get("TICKHUD_DATA_DIR", str(BASE_DATA_DIR)))
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
 DEFAULT_CONFIG = {
