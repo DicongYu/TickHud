@@ -282,7 +282,7 @@ class HudWindow(QMainWindow):
         self._timer.timeout.connect(self._poll_data)
         self._timer.start(100)
 
-        if hasattr(self._engine, "close_half"):
+        if "--test" in sys.argv or os.environ.get("TICKHUD_DATA_DIR"):
             self._cmd_timer = QTimer(self)
             self._cmd_timer.timeout.connect(self._poll_cmd)
             self._cmd_timer.start(300)
