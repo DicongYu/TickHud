@@ -308,8 +308,9 @@ class HudWindow(QMainWindow):
 
         now = datetime.datetime.now().strftime("%H:%M")
         lat = snap.latency_ms
+        test_tag = "  [TEST]" if "--test" in sys.argv or os.environ.get("TICKHUD_DATA_DIR") else ""
         if snap.connected:
-            self._status.setText(f"● LIVE  {now}  {lat:.0f}ms")
+            self._status.setText(f"● LIVE  {now}  {lat:.0f}ms{test_tag}")
             self._status.setStyleSheet(f"color: {GREEN};")
         else:
             self._status.setText(f"○ disconnected")
