@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import datetime
 import os
-import sys
 from pathlib import Path
 
 from PyQt6.QtCore import Qt, QTimer
@@ -136,10 +135,11 @@ class Card(QWidget):
 
 
 class HudWindow(QMainWindow):
-    def __init__(self, engine: DataEngine, store: LocalStore):
+    def __init__(self, engine: DataEngine, store: LocalStore, test_mode: bool = False):
         super().__init__()
         self._engine = engine
         self._store = store
+        self._test_mode = test_mode
 
         self._cmd_file = DATA_DIR / "cmd"
 
@@ -165,7 +165,7 @@ class HudWindow(QMainWindow):
     def _setup_window(self):
         self.setWindowTitle("TickHUD")
         title = "TickHUD"
-        if "--test" in sys.argv or os.environ.get("TICKHUD_DATA_DIR"):
+        if self._test_mode:
             title += " [TEST]"
         self.setWindowTitle(title)
         self.setWindowFlags(
@@ -282,7 +282,7 @@ class HudWindow(QMainWindow):
         self._timer.timeout.connect(self._poll_data)
         self._timer.start(100)
 
-        if "--test" in sys.argv or os.environ.get("TICKHUD_DATA_DIR"):
+        if self._test_mode:
             self._cmd_timer = QTimer(self)
             self._cmd_timer.timeout.connect(self._poll_cmd)
             self._cmd_timer.start(300)
@@ -317,7 +317,7 @@ class HudWindow(QMainWindow):
 
         now = datetime.datetime.now().strftime("%H:%M")
         lat = snap.latency_ms
-        test_tag = "  [TEST]" if "--test" in sys.argv or os.environ.get("TICKHUD_DATA_DIR") else ""
+        test_tag = "  [TEST]" if self._test_mode else ""
         if snap.connected:
             self._status.setText(f"● LIVE  {now}  {lat:.0f}ms{test_tag}")
             self._status.setStyleSheet(f"color: {GREEN};")
@@ -363,7 +363,7 @@ class HudWindow(QMainWindow):
         lat = self._engine.snapshot.latency_ms
         if self._engine.snapshot.connected:
             now = datetime.datetime.now().strftime("%H:%M")
-            tag = "  [TEST]" if "--test" in sys.argv or os.environ.get("TICKHUD_DATA_DIR") else ""
+            tag = "  [TEST]" if self._test_mode else ""
             self._status.setText(f"● LIVE  {now}  {lat:.0f}ms{tag}")
             self._status.setStyleSheet("color: #22c55e;")
 

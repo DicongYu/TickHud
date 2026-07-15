@@ -119,7 +119,7 @@ async def main_async(app: QApplication, use_mock: bool = False):
             engine.set_baseline(current_eq, today, 0.0)
             logger.info("First launch: baseline set to current equity: %.2f", current_eq)
 
-    hud = HudWindow(engine, store)
+    hud = HudWindow(engine, store, test_mode=use_mock)
     hud.show()
 
     if not use_mock:
