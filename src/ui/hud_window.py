@@ -242,7 +242,15 @@ class HudWindow(QMainWindow):
         cards_row.addWidget(self._card_dp, 1)
 
         self._card_op = Card("OPEN PnL")
-        cards_row.addWidget(self._card_op, 1)
+        op_col = QVBoxLayout()
+        op_col.setContentsMargins(0, 0, 0, 0)
+        op_col.setSpacing(2)
+        op_col.addWidget(self._card_op)
+        self._uptime_label = QLabel("--")
+        self._uptime_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._uptime_label.setStyleSheet(f"font-size: {max(1, round(16 * self._scale))}px; color: {GRAY};")
+        op_col.addWidget(self._uptime_label)
+        cards_row.addLayout(op_col, 1)
 
         content.addLayout(cards_row)
 
@@ -252,6 +260,15 @@ class HudWindow(QMainWindow):
         self._status = QLabel("○ disconnected")
         self._status.setObjectName("status")
         bottom.addWidget(self._status)
+
+        self._time_label = QLabel("--")
+        fs = max(1, round(16 * self._scale))
+        self._time_label.setStyleSheet(f"font-size: {fs}px; color: {GREEN};")
+        bottom.addWidget(self._time_label)
+
+        self._pr_label = QLabel("")
+        self._pr_label.setStyleSheet(f"font-size: {fs}px; color: {GRAY};")
+        bottom.addWidget(self._pr_label)
 
         bottom.addStretch()
 
@@ -328,18 +345,35 @@ class HudWindow(QMainWindow):
         uptime_str = str(uptime).split(".")[0]
         lat = snap.latency_ms
         test_tag = "  [TEST]" if self._test_mode else ""
-        pr_info = ""
+
+        pr_icon, pr_countdown = "", ""
         if self._pr_interval > 0:
             total_min = now.hour * 60 + now.minute
             next_aligned = ((total_min // self._pr_interval) + 1) * self._pr_interval
-            next_h, next_m = divmod(next_aligned % 1440, 60)
-            pr_info = f"  PR:{next_h:02d}:{next_m:02d}"
+            remain = next_aligned - total_min
+            remain_sec = remain * 60 - now.second
+            if remain_sec < 0:
+                remain_sec = 0
+            m, s = divmod(remain_sec, 60)
+            pr_icon = "🔔"
+            pr_countdown = f"{m}:{s:02d}"
+
         if snap.connected:
-            self._status.setText(f"● LIVE  {lat:.0f}ms  |  {now:%H:%M:%S}  ↑{uptime_str}{pr_info}{test_tag}")
+            self._status.setText(f"● LIVE  {lat:.0f}ms{test_tag}")
             self._status.setStyleSheet(f"color: {GREEN};")
+            fs = max(1, round(16 * self._scale))
+            self._time_label.setText(f"{now:%H:%M:%S}")
+            self._time_label.setStyleSheet(f"font-size: {fs}px; color: {GREEN};")
+            self._pr_label.setText(f"{pr_icon} {pr_countdown}" if pr_icon else "")
+            self._pr_label.setStyleSheet(f"font-size: {fs}px; color: {GRAY};")
+            self._uptime_label.setText(f"{uptime_str}")
+            self._uptime_label.setStyleSheet(f"font-size: {fs}px; color: {GRAY};")
         else:
             self._status.setText(f"○ disconnected")
             self._status.setStyleSheet(f"color: {GRAY};")
+            self._time_label.clear()
+            self._pr_label.clear()
+            self._uptime_label.setText("--")
 
     def _open_settings(self):
         d = SettingsDialog(self)
@@ -383,14 +417,28 @@ class HudWindow(QMainWindow):
             tag = "  [TEST]" if self._test_mode else ""
             now = datetime.datetime.now()
             uptime = now - self._start_time
-            pr_info = ""
+
+            pr_icon, pr_countdown = "", ""
             if self._pr_interval > 0:
                 total_min = now.hour * 60 + now.minute
                 next_aligned = ((total_min // self._pr_interval) + 1) * self._pr_interval
-                next_h, next_m = divmod(next_aligned % 1440, 60)
-                pr_info = f"  PR:{next_h:02d}:{next_m:02d}"
-            self._status.setText(f"● LIVE  {lat:.0f}ms  |  {now:%H:%M:%S}  ↑{str(uptime).split('.')[0]}{pr_info}{tag}")
+                remain = next_aligned - total_min
+                remain_sec = remain * 60 - now.second
+                if remain_sec < 0:
+                    remain_sec = 0
+                m, s = divmod(remain_sec, 60)
+                pr_icon = "🔔"
+                pr_countdown = f"{m}:{s:02d}"
+
+            fs = max(1, round(16 * self._scale))
+            self._status.setText(f"● LIVE  {lat:.0f}ms{tag}")
             self._status.setStyleSheet("color: #22c55e;")
+            self._time_label.setText(f"{now:%H:%M:%S}")
+            self._time_label.setStyleSheet(f"font-size: {fs}px; color: {GREEN};")
+            self._pr_label.setText(f"{pr_icon} {pr_countdown}" if pr_icon else "")
+            self._pr_label.setStyleSheet(f"font-size: {fs}px; color: {GRAY};")
+            self._uptime_label.setText(f"{str(uptime).split('.')[0]}")
+            self._uptime_label.setStyleSheet(f"font-size: {fs}px; color: {GRAY};")
 
     def _load_alarms(self):
         self._alarms: list[dict] = []
