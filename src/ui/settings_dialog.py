@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (
 )
 
 from src.config.settings import load_config, save_config
+from src.ui.alarm_dialog import AlarmDialog
 
 
 class SettingsDialog(QDialog):
@@ -92,6 +93,12 @@ class SettingsDialog(QDialog):
         form.addRow("Password:", self._api_password)
 
         layout.addLayout(form)
+
+        alarm_btn = QPushButton("⏰ Alarms…")
+        alarm_btn.setStyleSheet("font-size: 12px; padding: 6px 14px;")
+        alarm_btn.clicked.connect(self._open_alarms)
+        layout.addWidget(alarm_btn)
+
         layout.addStretch()
 
         btn_row = QHBoxLayout()
@@ -114,3 +121,7 @@ class SettingsDialog(QDialog):
         cfg["api_password"] = self._api_password.text().strip()
         save_config(cfg)
         self.accept()
+
+    def _open_alarms(self):
+        d = AlarmDialog(self)
+        d.exec()

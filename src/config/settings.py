@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import datetime
 from dataclasses import dataclass, asdict
 from pathlib import Path
 
@@ -23,9 +24,20 @@ DEFAULT_CONFIG = {
     "window_y": None,
     "opacity": 0.85,
     "refresh_ms": 100,
+    "alarms": [
+        {"market": "Tokyo",   "summer": "07:00", "winter": "07:00", "sound": "", "enabled": False},
+        {"market": "London",  "summer": "15:00", "winter": "16:00", "sound": "", "enabled": False},
+        {"market": "New York","summer": "20:00", "winter": "21:00", "sound": "", "enabled": False},
+    ],
 }
 
 _SECRET_KEYS = ("api_key", "api_secret", "api_password")
+
+
+def is_dst() -> bool:
+    """Simple DST detection for US/EU (Northern Hemisphere)"""
+    m = datetime.now().month
+    return 4 <= m <= 10
 
 
 def ensure_dirs():

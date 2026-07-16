@@ -15,7 +15,12 @@ from src.engine.data_engine import DataEngine
 from src.ui.settings_dialog import SettingsDialog
 from src.ui.daily_ledger import DailyLedgerDialog
 from src.db.local_store import LocalStore
-from src.config.settings import DATA_DIR
+from src.config.settings import DATA_DIR, load_config, is_dst
+
+try:
+    from PyQt6.QtMultimedia import QSoundEffect
+except ImportError:
+    QSoundEffect = None
 
 GREEN = "#22c55e"
 RED = "#ef4444"
@@ -151,6 +156,8 @@ class HudWindow(QMainWindow):
         self._start_time = datetime.datetime.now()
 
         self._cmd_file = DATA_DIR / "cmd"
+
+        self._load_alarms()
 
         self._init_font()
         self._setup_window()
@@ -390,6 +397,46 @@ class HudWindow(QMainWindow):
             tag = "  [TEST]" if self._test_mode else ""
             self._status.setText(f"● LIVE  {now}  {lat:.0f}ms{tag}")
             self._status.setStyleSheet("color: #22c55e;")
+
+    def _load_alarms(self):
+        self._alarms: list[dict] = []
+        self._alarm_sound = None
+        self._alarm_fired: set[str] = set()
+        cfg = load_config()
+        for a in cfg.get("alarms", []):
+            if a.get("enabled"):
+                key = f"{a['market']}_{a.get('summer','')}_{a.get('winter','')}"
+                self._alarms.append(a)
+        if QSoundEffect is not None:
+            self._alarm_sound = QSoundEffect(self)
+            self._alarm_sound.setVolume(0.8)
+        self._alarm_timer = QTimer(self)
+        self._alarm_timer.timeout.connect(self._alarm_tick)
+        self._alarm_timer.start(1000)
+
+    def _alarm_tick(self):
+        now = datetime.datetime.now()
+        hm = now.strftime("%H:%M")
+        dst = is_dst()
+        for a in self._alarms:
+            target = a["summer"] if dst else a["winter"]
+            mkey = f"{a['market']}_{target}"
+            if hm == target:
+                if mkey not in self._alarm_fired:
+                    self._alarm_fired.add(mkey)
+                    self._play_alarm(a.get("sound", ""), a["market"])
+            else:
+                self._alarm_fired.discard(mkey)
+
+    def _play_alarm(self, sound_path: str, market: str):
+        self._status.setText(f"🔔 {market} open!")
+        self._status.setStyleSheet("color: #facc15;")
+        QTimer.singleShot(3000, self._restore_status)
+        if sound_path and QSoundEffect is not None and Path(sound_path).exists():
+            self._alarm_sound.setSource(__import__("PyQt6.QtCore").QtCore.QUrl.fromLocalFile(sound_path))
+            self._alarm_sound.play()
+        else:
+            __import__("sys").stdout.write(f"\a{market} open!\n")
 
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton:
