@@ -104,8 +104,10 @@ async def main_async(app: QApplication, use_mock: bool = False):
             bl_eq = latest["equity_usdt"]
             ratio = abs(bl_eq - current_eq) / max(bl_eq, 1)
             if ratio < 0.2:
-                engine.set_baseline(bl_eq, today, 0.0)
-                logger.info("Restored baseline %s: %.2f", today, bl_eq)
+                bl_ts = latest.get("created_at") or f"{today}T00:00:00"
+                net = store.get_transfer_sum_since(bl_ts)
+                engine.set_baseline(bl_eq, today, net)
+                logger.info("Restored baseline %s: %.2f (net_deposit=%.2f)", today, bl_eq, net)
             else:
                 logger.warning("Baseline %.2f differs from equity %.2f (%.0f%%), overwriting", bl_eq, current_eq, ratio * 100)
                 store.save_baseline(today, current_eq)
