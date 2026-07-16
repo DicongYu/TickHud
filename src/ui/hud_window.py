@@ -335,7 +335,7 @@ class HudWindow(QMainWindow):
             next_h, next_m = divmod(next_aligned % 1440, 60)
             pr_info = f"  PR:{next_h:02d}:{next_m:02d}"
         if snap.connected:
-            self._status.setText(f"● {lat:.0f}ms  |  {now:%H:%M:%S}  ↑{uptime_str}{pr_info}{test_tag}")
+            self._status.setText(f"● LIVE  {lat:.0f}ms  |  {now:%H:%M:%S}  ↑{uptime_str}{pr_info}{test_tag}")
             self._status.setStyleSheet(f"color: {GREEN};")
         else:
             self._status.setText(f"○ disconnected")
@@ -389,7 +389,7 @@ class HudWindow(QMainWindow):
                 next_aligned = ((total_min // self._pr_interval) + 1) * self._pr_interval
                 next_h, next_m = divmod(next_aligned % 1440, 60)
                 pr_info = f"  PR:{next_h:02d}:{next_m:02d}"
-            self._status.setText(f"● {lat:.0f}ms  |  {now:%H:%M:%S}  ↑{str(uptime).split('.')[0]}{pr_info}{tag}")
+            self._status.setText(f"● LIVE  {lat:.0f}ms  |  {now:%H:%M:%S}  ↑{str(uptime).split('.')[0]}{pr_info}{tag}")
             self._status.setStyleSheet("color: #22c55e;")
 
     def _load_alarms(self):
