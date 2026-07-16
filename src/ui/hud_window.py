@@ -262,6 +262,7 @@ class HudWindow(QMainWindow):
 
         self._pr_label = QLabel("")
         self._pr_label.setStyleSheet(f"font-size: {fs}px; color: {GRAY};")
+        self._pr_label.setContentsMargins(0, 0, 4, 0)
         bottom.addWidget(self._pr_label)
 
         self._uptime_label = QLabel("--")
