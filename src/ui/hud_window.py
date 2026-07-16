@@ -348,7 +348,7 @@ class HudWindow(QMainWindow):
         lat = snap.latency_ms
         test_tag = "  [TEST]" if self._test_mode else ""
         if snap.connected:
-            self._status.setText(f"● LIVE  {now_str}  {lat:.0f}ms{test_tag}")
+            self._status.setText(f"● LIVE  {lat:.0f}ms{test_tag}")
             self._status.setStyleSheet(f"color: {GREEN};")
         else:
             self._status.setText(f"○ disconnected")
@@ -393,9 +393,8 @@ class HudWindow(QMainWindow):
     def _restore_status(self):
         lat = self._engine.snapshot.latency_ms
         if self._engine.snapshot.connected:
-            now = datetime.datetime.now().strftime("%H:%M")
             tag = "  [TEST]" if self._test_mode else ""
-            self._status.setText(f"● LIVE  {now}  {lat:.0f}ms{tag}")
+            self._status.setText(f"● LIVE  {lat:.0f}ms{tag}")
             self._status.setStyleSheet("color: #22c55e;")
 
     def _load_alarms(self):
