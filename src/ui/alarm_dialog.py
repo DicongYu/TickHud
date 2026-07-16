@@ -6,6 +6,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QCheckBox, QTimeEdit, QLineEdit, QFileDialog, QGroupBox,
+    QComboBox,
 )
 
 from src.config.settings import load_config, save_config, is_dst
@@ -115,7 +116,7 @@ class AlarmDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Market Alarms")
-        self.setFixedSize(640, 360)
+        self.setFixedSize(640, 440)
         self.setStyleSheet("background: #0d0d0d; color: #f0f0f0;" + STYLE)
         self.setWindowFlags(
             self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint
@@ -123,6 +124,7 @@ class AlarmDialog(QDialog):
 
         cfg = load_config()
         self._rows = [AlarmRow(a) for a in cfg.get("alarms", [])]
+        pr = cfg.get("periodic_reminder", {"enabled": False, "interval": 5, "sound": ""})
 
         layout = QVBoxLayout(self)
 
@@ -165,6 +167,32 @@ class AlarmDialog(QDialog):
             group_layout.addLayout(row_layout)
 
         layout.addWidget(group)
+
+        pr_group = QGroupBox("Periodic Reminder")
+        pr_layout = QHBoxLayout(pr_group)
+
+        self._pr_enabled = QCheckBox("On")
+        self._pr_enabled.setChecked(pr.get("enabled", False))
+        pr_layout.addWidget(self._pr_enabled)
+
+        pr_layout.addWidget(QLabel("Every"))
+
+        self._pr_interval = QComboBox()
+        self._pr_interval.addItems(["5 min", "10 min", "15 min"])
+        intervals = {5: 0, 10: 1, 15: 2}
+        self._pr_interval.setCurrentIndex(intervals.get(pr.get("interval", 5), 0))
+        self._pr_interval.setStyleSheet("font-size: 13px; padding: 4px;")
+        pr_layout.addWidget(self._pr_interval)
+
+        self._pr_sound = QLineEdit(pr.get("sound", ""))
+        self._pr_sound.setPlaceholderText("None (system beep)")
+        pr_layout.addWidget(self._pr_sound, 1)
+
+        self._pr_browse = QPushButton("Browse…")
+        self._pr_browse.clicked.connect(self._pr_pick_sound)
+        pr_layout.addWidget(self._pr_browse)
+
+        layout.addWidget(pr_group)
         layout.addStretch()
 
         btn_row = QHBoxLayout()
@@ -178,8 +206,21 @@ class AlarmDialog(QDialog):
         btn_row.addWidget(cancel_btn)
         layout.addLayout(btn_row)
 
+    def _pr_pick_sound(self):
+        fp, _ = QFileDialog.getOpenFileName(
+            None, "Select Sound", "", "Audio (*.wav *.mp3);;All Files (*)"
+        )
+        if fp:
+            self._pr_sound.setText(fp)
+
     def _on_save(self):
         cfg = load_config()
         cfg["alarms"] = [r.to_dict() for r in self._rows]
+        idx = self._pr_interval.currentIndex()
+        cfg["periodic_reminder"] = {
+            "enabled": self._pr_enabled.isChecked(),
+            "interval": [5, 10, 15][idx],
+            "sound": self._pr_sound.text(),
+        }
         save_config(cfg)
         self.accept()

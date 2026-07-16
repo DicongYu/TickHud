@@ -402,11 +402,16 @@ class HudWindow(QMainWindow):
         self._alarms: list[dict] = []
         self._alarm_sound = None
         self._alarm_fired: set[str] = set()
+        self._pr_interval = 0
+        self._pr_sound = ""
         cfg = load_config()
         for a in cfg.get("alarms", []):
             if a.get("enabled"):
-                key = f"{a['market']}_{a.get('summer','')}_{a.get('winter','')}"
                 self._alarms.append(a)
+        pr = cfg.get("periodic_reminder", {})
+        if pr.get("enabled"):
+            self._pr_interval = pr.get("interval", 5)
+            self._pr_sound = pr.get("sound", "")
         if QSoundEffect is not None:
             self._alarm_sound = QSoundEffect(self)
             self._alarm_sound.setVolume(0.8)
@@ -418,6 +423,8 @@ class HudWindow(QMainWindow):
         now = datetime.datetime.now()
         hm = now.strftime("%H:%M")
         dst = is_dst()
+
+        # Market open alarms
         for a in self._alarms:
             target = a["summer"] if dst else a["winter"]
             mkey = f"{a['market']}_{target}"
@@ -427,6 +434,18 @@ class HudWindow(QMainWindow):
                     self._play_alarm(a.get("sound", ""), a["market"])
             else:
                 self._alarm_fired.discard(mkey)
+
+        # Periodic reminder (00:00-aligned)
+        if self._pr_interval > 0:
+            total_min = now.hour * 60 + now.minute
+            if total_min % self._pr_interval == 0 and now.second < 3:
+                pkey = f"pr_{total_min}"
+                if pkey not in self._alarm_fired:
+                    self._alarm_fired.add(pkey)
+                    self._play_alarm(self._pr_sound, f"{self._pr_interval}min")
+        # Cleanup stale periodic keys (keep only current and future)
+        now_min = now.hour * 60 + now.minute
+        self._alarm_fired = {k for k in self._alarm_fired if not k.startswith("pr_") or int(k.split("_")[1]) >= now_min - 1}
 
     def _play_alarm(self, sound_path: str, market: str):
         self._status.setText(f"🔔 {market} open!")

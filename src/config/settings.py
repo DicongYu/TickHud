@@ -29,6 +29,11 @@ DEFAULT_CONFIG = {
         {"market": "London",  "summer": "15:00", "winter": "16:00", "sound": "", "enabled": False},
         {"market": "New York","summer": "20:00", "winter": "21:00", "sound": "", "enabled": False},
     ],
+    "periodic_reminder": {
+        "enabled": False,
+        "interval": 5,
+        "sound": "",
+    },
 }
 
 _SECRET_KEYS = ("api_key", "api_secret", "api_password")
