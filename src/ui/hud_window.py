@@ -324,7 +324,7 @@ class HudWindow(QMainWindow):
         uptime_str = str(uptime).split(".")[0]
         self._card_time.update(
             f"{now:%H:%M:%S}",
-            f"↑ {uptime_str}",
+            f"{uptime_str}",
             GRAY,
         )
 
