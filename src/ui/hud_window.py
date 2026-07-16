@@ -69,6 +69,13 @@ QLabel#valCard {{
     padding: 0;
     margin: 0;
 }}
+QLabel#timePct {{
+    font-family: "JetBrains Mono", "monospace";
+    font-size: {S(7)};
+    color: {GRAY};
+    padding: 0;
+    margin: 0;
+}}
 QLabel#status {{
     font-family: "JetBrains Mono", "monospace";
     font-size: {S(8)};
@@ -238,6 +245,7 @@ class HudWindow(QMainWindow):
         cards_row.addWidget(self._card_op, 1)
 
         self._card_time = Card("UTC+8")
+        self._card_time._pct.setObjectName("timePct")
         cards_row.addWidget(self._card_time, 1)
 
         content.addLayout(cards_row)
