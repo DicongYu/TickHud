@@ -25,7 +25,7 @@ DIM = "#2a2a2a"
 BG = "#0d0d0d"
 CARD = "#141414"
 
-BASE_W = 380
+BASE_W = 480
 BASE_H = 100
 
 def _gen_style(s: float = 1.0) -> str:
@@ -140,6 +140,7 @@ class HudWindow(QMainWindow):
         self._engine = engine
         self._store = store
         self._test_mode = test_mode
+        self._start_time = datetime.datetime.now()
 
         self._cmd_file = DATA_DIR / "cmd"
 
@@ -236,6 +237,9 @@ class HudWindow(QMainWindow):
         self._card_op = Card("OPEN PnL")
         cards_row.addWidget(self._card_op, 1)
 
+        self._card_time = Card("UTC+8")
+        cards_row.addWidget(self._card_time, 1)
+
         content.addLayout(cards_row)
 
         bottom = QHBoxLayout()
@@ -315,11 +319,20 @@ class HudWindow(QMainWindow):
             op_color,
         )
 
-        now = datetime.datetime.now().strftime("%H:%M")
+        now = datetime.datetime.now()
+        uptime = now - self._start_time
+        uptime_str = str(uptime).split(".")[0]
+        self._card_time.update(
+            f"{now:%H:%M:%S}",
+            f"↑ {uptime_str}",
+            GRAY,
+        )
+
+        now_str = now.strftime("%H:%M")
         lat = snap.latency_ms
         test_tag = "  [TEST]" if self._test_mode else ""
         if snap.connected:
-            self._status.setText(f"● LIVE  {now}  {lat:.0f}ms{test_tag}")
+            self._status.setText(f"● LIVE  {now_str}  {lat:.0f}ms{test_tag}")
             self._status.setStyleSheet(f"color: {GREEN};")
         else:
             self._status.setText(f"○ disconnected")
