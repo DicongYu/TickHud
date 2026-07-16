@@ -30,7 +30,7 @@ DIM = "#2a2a2a"
 BG = "#0d0d0d"
 CARD = "#141414"
 
-BASE_W = 480
+BASE_W = 380
 BASE_H = 100
 
 def _gen_style(s: float = 1.0) -> str:
@@ -71,14 +71,6 @@ QLabel#valCard {{
     font-family: "JetBrains Mono", "monospace";
     font-size: {S(14)};
     font-weight: bold;
-    padding: 0;
-    margin: 0;
-}}
-QLabel#timePct {{
-    font-family: "JetBrains Mono", "monospace";
-    font-size: {S(14)};
-    font-weight: bold;
-    color: {GRAY};
     padding: 0;
     margin: 0;
 }}
@@ -252,10 +244,6 @@ class HudWindow(QMainWindow):
         self._card_op = Card("OPEN PnL")
         cards_row.addWidget(self._card_op, 1)
 
-        self._card_time = Card("UTC+8")
-        self._card_time._pct.setObjectName("timePct")
-        cards_row.addWidget(self._card_time, 1)
-
         content.addLayout(cards_row)
 
         bottom = QHBoxLayout()
@@ -338,17 +326,10 @@ class HudWindow(QMainWindow):
         now = datetime.datetime.now()
         uptime = now - self._start_time
         uptime_str = str(uptime).split(".")[0]
-        self._card_time.update(
-            f"{now:%H:%M:%S}",
-            f"{uptime_str}",
-            GRAY,
-        )
-
-        now_str = now.strftime("%H:%M")
         lat = snap.latency_ms
         test_tag = "  [TEST]" if self._test_mode else ""
         if snap.connected:
-            self._status.setText(f"● LIVE  {lat:.0f}ms{test_tag}")
+            self._status.setText(f"● {lat:.0f}ms  |  {now:%H:%M:%S}  ↑{uptime_str}{test_tag}")
             self._status.setStyleSheet(f"color: {GREEN};")
         else:
             self._status.setText(f"○ disconnected")
@@ -394,7 +375,9 @@ class HudWindow(QMainWindow):
         lat = self._engine.snapshot.latency_ms
         if self._engine.snapshot.connected:
             tag = "  [TEST]" if self._test_mode else ""
-            self._status.setText(f"● LIVE  {lat:.0f}ms{tag}")
+            now = datetime.datetime.now()
+            uptime = now - self._start_time
+            self._status.setText(f"● {lat:.0f}ms  |  {now:%H:%M:%S}  ↑{str(uptime).split('.')[0]}{tag}")
             self._status.setStyleSheet("color: #22c55e;")
 
     def _load_alarms(self):
@@ -451,10 +434,12 @@ class HudWindow(QMainWindow):
         self._status.setStyleSheet("color: #facc15;")
         QTimer.singleShot(3000, self._restore_status)
         if sound_path and QSoundEffect is not None and Path(sound_path).exists():
-            self._alarm_sound.setSource(__import__("PyQt6.QtCore").QtCore.QUrl.fromLocalFile(sound_path))
+            from PyQt6.QtCore import QUrl
+            self._alarm_sound.setSource(QUrl.fromLocalFile(sound_path))
             self._alarm_sound.play()
         else:
-            __import__("sys").stdout.write(f"\a{market} open!\n")
+            import sys
+            sys.stdout.write(f"\a{market} open!\n")
 
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton:
