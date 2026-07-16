@@ -71,7 +71,7 @@ QLabel#valCard {{
 }}
 QLabel#timePct {{
     font-family: "JetBrains Mono", "monospace";
-    font-size: {S(7)};
+    font-size: {S(14)};
     font-weight: bold;
     color: {GRAY};
     padding: 0;
