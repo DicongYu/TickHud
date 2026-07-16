@@ -242,15 +242,7 @@ class HudWindow(QMainWindow):
         cards_row.addWidget(self._card_dp, 1)
 
         self._card_op = Card("OPEN PnL")
-        op_col = QVBoxLayout()
-        op_col.setContentsMargins(0, 0, 0, 0)
-        op_col.setSpacing(2)
-        op_col.addWidget(self._card_op)
-        self._uptime_label = QLabel("--")
-        self._uptime_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._uptime_label.setStyleSheet(f"font-size: {max(1, round(16 * self._scale))}px; color: {GRAY};")
-        op_col.addWidget(self._uptime_label)
-        cards_row.addLayout(op_col, 1)
+        cards_row.addWidget(self._card_op, 1)
 
         content.addLayout(cards_row)
 
@@ -266,9 +258,15 @@ class HudWindow(QMainWindow):
         self._time_label.setStyleSheet(f"font-size: {fs}px; color: {GREEN};")
         bottom.addWidget(self._time_label)
 
+        bottom.addStretch()
+
         self._pr_label = QLabel("")
         self._pr_label.setStyleSheet(f"font-size: {fs}px; color: {GRAY};")
         bottom.addWidget(self._pr_label)
+
+        self._uptime_label = QLabel("--")
+        self._uptime_label.setStyleSheet(f"font-size: {fs}px; color: {GRAY};")
+        bottom.addWidget(self._uptime_label)
 
         bottom.addStretch()
 
