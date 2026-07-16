@@ -484,4 +484,5 @@ class DataEngine:
         if self._baseline_equity is None:
             return 0.0, 0.0
         pnl = equity - self._baseline_equity - self._net_deposit
-        return round(pnl, 2), 0.0
+        pct = (pnl / self._baseline_equity) * 100 if self._baseline_equity else 0.0
+        return round(pnl, 2), round(pct, 2)
