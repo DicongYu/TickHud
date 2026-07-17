@@ -83,6 +83,7 @@ QPushButton#saveBtn:hover {
 class AlarmRow:
     def __init__(self, data: dict, parent=None):
         self._parent = parent
+        self._snd = None
         self.market = data["market"]
         self._enabled = QCheckBox()
         self._enabled.setChecked(data.get("enabled", False))
@@ -100,7 +101,7 @@ class AlarmRow:
         self._browse.clicked.connect(self._pick_sound)
         self._play = QPushButton("▶")
         self._play.setFixedWidth(32)
-        self._play.clicked.connect(self._play_sound)
+        self._play.clicked.connect(self._toggle_sound)
 
     def _pick_sound(self):
         fp, _ = QFileDialog.getOpenFileName(
@@ -109,17 +110,29 @@ class AlarmRow:
         if fp:
             self._sound.setText(fp)
 
-    def _play_sound(self):
+    def _toggle_sound(self):
+        if self._snd is not None and self._snd.isPlaying():
+            self._snd.stop()
+            self._snd = None
+            self._play.setText("▶")
+            return
         sound_path = self._sound.text().strip()
         if sound_path and Path(sound_path).exists() and QSoundEffect is not None:
             from PyQt6.QtCore import QUrl
-            snd = QSoundEffect(self._parent) if self._parent else QSoundEffect()
-            snd.setVolume(0.8)
-            snd.setSource(QUrl.fromLocalFile(sound_path))
-            snd.play()
+            self._snd = QSoundEffect(self._parent) if self._parent else QSoundEffect()
+            self._snd.setVolume(0.8)
+            self._snd.setSource(QUrl.fromLocalFile(sound_path))
+            self._snd.playingChanged.connect(self._on_playing_changed)
+            self._snd.play()
+            self._play.setText("■")
         else:
             import sys
             sys.stdout.write("\a")
+
+    def _on_playing_changed(self):
+        if self._snd and not self._snd.isPlaying():
+            self._snd = None
+            self._play.setText("▶")
 
     def to_dict(self) -> dict:
         return {
@@ -145,6 +158,7 @@ class AlarmDialog(QDialog):
         )
 
         cfg = load_config()
+        self._pr_snd = None
         self._rows = [AlarmRow(a, parent=self) for a in cfg.get("alarms", [])]
         pr = cfg.get("periodic_reminder", {"enabled": False, "interval": 5, "sound": ""})
 
@@ -220,7 +234,7 @@ class AlarmDialog(QDialog):
 
         self._pr_play = QPushButton("▶")
         self._pr_play.setFixedWidth(32)
-        self._pr_play.clicked.connect(self._pr_play_sound)
+        self._pr_play.clicked.connect(self._pr_toggle_sound)
         pr_layout.addWidget(self._pr_play)
 
         layout.addWidget(pr_group)
@@ -244,17 +258,29 @@ class AlarmDialog(QDialog):
         if fp:
             self._pr_sound.setText(fp)
 
-    def _pr_play_sound(self):
+    def _pr_toggle_sound(self):
+        if self._pr_snd is not None and self._pr_snd.isPlaying():
+            self._pr_snd.stop()
+            self._pr_snd = None
+            self._pr_play.setText("▶")
+            return
         sound_path = self._pr_sound.text().strip()
         if sound_path and Path(sound_path).exists() and QSoundEffect is not None:
             from PyQt6.QtCore import QUrl
-            snd = QSoundEffect(self)
-            snd.setVolume(0.8)
-            snd.setSource(QUrl.fromLocalFile(sound_path))
-            snd.play()
+            self._pr_snd = QSoundEffect(self)
+            self._pr_snd.setVolume(0.8)
+            self._pr_snd.setSource(QUrl.fromLocalFile(sound_path))
+            self._pr_snd.playingChanged.connect(self._pr_on_playing_changed)
+            self._pr_snd.play()
+            self._pr_play.setText("■")
         else:
             import sys
             sys.stdout.write("\a")
+
+    def _pr_on_playing_changed(self):
+        if self._pr_snd and not self._pr_snd.isPlaying():
+            self._pr_snd = None
+            self._pr_play.setText("▶")
 
     def _on_save(self):
         cfg = load_config()
