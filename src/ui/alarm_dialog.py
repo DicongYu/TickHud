@@ -126,8 +126,11 @@ class AlarmRow:
             self._snd.play()
             self._play.setText("■")
         else:
-            import sys
-            sys.stdout.write("\a")
+            from PyQt6.QtWidgets import QApplication
+            QApplication.beep()
+            self._play.setText("■")
+            from PyQt6.QtCore import QTimer
+            QTimer.singleShot(250, lambda: self._play.setText("▶"))
 
     def _on_playing_changed(self):
         if self._snd and not self._snd.isPlaying():
@@ -274,8 +277,11 @@ class AlarmDialog(QDialog):
             self._pr_snd.play()
             self._pr_play.setText("■")
         else:
-            import sys
-            sys.stdout.write("\a")
+            from PyQt6.QtWidgets import QApplication
+            QApplication.beep()
+            self._pr_play.setText("■")
+            from PyQt6.QtCore import QTimer
+            QTimer.singleShot(250, lambda: self._pr_play.setText("▶"))
 
     def _pr_on_playing_changed(self):
         if self._pr_snd and not self._pr_snd.isPlaying():
