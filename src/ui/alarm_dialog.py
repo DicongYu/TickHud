@@ -15,7 +15,7 @@ try:
 except ImportError:
     QSoundEffect = None
 
-from src.config.settings import load_config, save_config, is_dst
+from src.config.settings import load_config, save_config, is_dst, BEEP_PATH
 
 STYLE = """
 QGroupBox {
@@ -117,6 +117,8 @@ class AlarmRow:
             self._play.setText("▶")
             return
         sound_path = self._sound.text().strip()
+        if not sound_path or not Path(sound_path).exists():
+            sound_path = str(BEEP_PATH)
         if sound_path and Path(sound_path).exists() and QSoundEffect is not None:
             from PyQt6.QtCore import QUrl
             self._snd = QSoundEffect(self._parent) if self._parent else QSoundEffect()
@@ -268,6 +270,8 @@ class AlarmDialog(QDialog):
             self._pr_play.setText("▶")
             return
         sound_path = self._pr_sound.text().strip()
+        if not sound_path or not Path(sound_path).exists():
+            sound_path = str(BEEP_PATH)
         if sound_path and Path(sound_path).exists() and QSoundEffect is not None:
             from PyQt6.QtCore import QUrl
             self._pr_snd = QSoundEffect(self)

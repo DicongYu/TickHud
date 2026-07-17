@@ -79,3 +79,6 @@ def get_db_path() -> Path:
 def get_log_path() -> Path:
     ensure_dirs()
     return DATA_DIR / "tickhud.log"
+
+
+BEEP_PATH = Path(__file__).resolve().parent.parent.parent / "assets" / "beep.wav"

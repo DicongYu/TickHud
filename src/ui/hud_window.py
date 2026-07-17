@@ -15,7 +15,7 @@ from src.engine.data_engine import DataEngine
 from src.ui.settings_dialog import SettingsDialog
 from src.ui.daily_ledger import DailyLedgerDialog
 from src.db.local_store import LocalStore
-from src.config.settings import DATA_DIR, load_config, is_dst
+from src.config.settings import DATA_DIR, load_config, is_dst, BEEP_PATH
 
 try:
     from PyQt6.QtMultimedia import QSoundEffect
@@ -492,9 +492,12 @@ class HudWindow(QMainWindow):
         self._status.setText(f"🔔 {market} open!")
         self._status.setStyleSheet("color: #facc15;")
         QTimer.singleShot(3000, self._restore_status)
-        if sound_path and QSoundEffect is not None and Path(sound_path).exists():
+        sp = sound_path or ""
+        if not sp or not Path(sp).exists():
+            sp = str(BEEP_PATH)
+        if sp and Path(sp).exists() and QSoundEffect is not None:
             from PyQt6.QtCore import QUrl
-            self._alarm_sound.setSource(QUrl.fromLocalFile(sound_path))
+            self._alarm_sound.setSource(QUrl.fromLocalFile(sp))
             self._alarm_sound.play()
         else:
             from PyQt6.QtWidgets import QApplication
