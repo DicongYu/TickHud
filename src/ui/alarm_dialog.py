@@ -10,10 +10,7 @@ from PyQt6.QtWidgets import (
     QComboBox,
 )
 
-try:
-    from PyQt6.QtMultimedia import QSoundEffect
-except ImportError:
-    QSoundEffect = None
+from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 
 from src.config.settings import load_config, save_config, is_dst, BEEP_PATH
 
@@ -83,7 +80,8 @@ QPushButton#saveBtn:hover {
 class AlarmRow:
     def __init__(self, data: dict, parent=None):
         self._parent = parent
-        self._snd = None
+        self._player = None
+        self._audio_output = None
         self.market = data["market"]
         self._enabled = QCheckBox()
         self._enabled.setChecked(data.get("enabled", False))
@@ -115,22 +113,23 @@ class AlarmRow:
             self._sound.setText(fp)
 
     def _toggle_sound(self):
-        if self._snd is not None and self._snd.isPlaying():
-            self._snd.stop()
-            self._snd = None
+        if self._player and self._player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
+            self._player.stop()
+            self._cleanup_player()
             self._play.setText("▶")
             return
         sound_path = self._sound.text().strip()
         if not sound_path or not Path(sound_path).exists():
             sound_path = str(BEEP_PATH)
-        if sound_path and Path(sound_path).exists() and QSoundEffect is not None:
+        if sound_path and Path(sound_path).exists():
             from PyQt6.QtCore import QUrl
-            self._snd = QSoundEffect(self._parent) if self._parent else QSoundEffect()
-            self._snd.setVolume(0.8)
-            self._snd.playingChanged.connect(self._on_playing_changed)
-            self._snd.statusChanged.connect(lambda sp=sound_path: self._on_snd_error(sp))
-            self._snd.setSource(QUrl.fromLocalFile(sound_path))
-            self._snd.play()
+            self._player = QMediaPlayer(self._parent) if self._parent else QMediaPlayer()
+            self._audio_output = QAudioOutput()
+            self._player.setAudioOutput(self._audio_output)
+            self._audio_output.setVolume(0.8)
+            self._player.mediaStatusChanged.connect(self._on_media_status)
+            self._player.setSource(QUrl.fromLocalFile(sound_path))
+            self._player.play()
             self._play.setText("■")
         else:
             from PyQt6.QtWidgets import QApplication
@@ -139,19 +138,24 @@ class AlarmRow:
             from PyQt6.QtCore import QTimer
             QTimer.singleShot(250, lambda: self._play.setText("▶"))
 
-    def _on_snd_error(self, original_path: str):
-        if self._snd and self._snd.status() == QSoundEffect.Status.Error:  # type: ignore
-            self._snd = None
-            if original_path != str(BEEP_PATH):
+    def _on_media_status(self, status):
+        if self._player is None:
+            return
+        if status == QMediaPlayer.MediaStatus.EndOfMedia:
+            self._cleanup_player()
+            self._play.setText("▶")
+        elif status == QMediaPlayer.MediaStatus.InvalidMedia:
+            sp = self._player.source().toString()
+            self._cleanup_player()
+            if sp and str(BEEP_PATH) not in sp:
                 self._sound.setText("")
                 self._toggle_sound()
             else:
                 self._play.setText("▶")
 
-    def _on_playing_changed(self):
-        if self._snd and not self._snd.isPlaying():
-            self._snd = None
-            self._play.setText("▶")
+    def _cleanup_player(self):
+        self._player = None
+        self._audio_output = None
 
     def to_dict(self) -> dict:
         return {
@@ -177,7 +181,8 @@ class AlarmDialog(QDialog):
         )
 
         cfg = load_config()
-        self._pr_snd = None
+        self._pr_player = None
+        self._pr_audio = None
         self._rows = [AlarmRow(a, parent=self) for a in cfg.get("alarms", [])]
         pr = cfg.get("periodic_reminder", {"enabled": False, "interval": 5, "sound": ""})
 
@@ -288,22 +293,24 @@ class AlarmDialog(QDialog):
             self._pr_sound.setText(fp)
 
     def _pr_toggle_sound(self):
-        if self._pr_snd is not None and self._pr_snd.isPlaying():
-            self._pr_snd.stop()
-            self._pr_snd = None
+        if self._pr_player and self._pr_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
+            self._pr_player.stop()
+            self._pr_player = None
+            self._pr_audio = None
             self._pr_play.setText("▶")
             return
         sound_path = self._pr_sound.text().strip()
         if not sound_path or not Path(sound_path).exists():
             sound_path = str(BEEP_PATH)
-        if sound_path and Path(sound_path).exists() and QSoundEffect is not None:
+        if sound_path and Path(sound_path).exists():
             from PyQt6.QtCore import QUrl
-            self._pr_snd = QSoundEffect(self)
-            self._pr_snd.setVolume(0.8)
-            self._pr_snd.playingChanged.connect(self._pr_on_playing_changed)
-            self._pr_snd.statusChanged.connect(lambda sp=sound_path: self._pr_on_snd_error(sp))
-            self._pr_snd.setSource(QUrl.fromLocalFile(sound_path))
-            self._pr_snd.play()
+            self._pr_player = QMediaPlayer(self)
+            self._pr_audio = QAudioOutput()
+            self._pr_player.setAudioOutput(self._pr_audio)
+            self._pr_audio.setVolume(0.8)
+            self._pr_player.mediaStatusChanged.connect(self._pr_on_media_status)
+            self._pr_player.setSource(QUrl.fromLocalFile(sound_path))
+            self._pr_player.play()
             self._pr_play.setText("■")
         else:
             from PyQt6.QtWidgets import QApplication
@@ -312,19 +319,22 @@ class AlarmDialog(QDialog):
             from PyQt6.QtCore import QTimer
             QTimer.singleShot(250, lambda: self._pr_play.setText("▶"))
 
-    def _pr_on_snd_error(self, original_path: str):
-        if self._pr_snd and self._pr_snd.status() == QSoundEffect.Status.Error:  # type: ignore
-            self._pr_snd = None
-            if original_path != str(BEEP_PATH):
+    def _pr_on_media_status(self, status):
+        if self._pr_player is None:
+            return
+        if status == QMediaPlayer.MediaStatus.EndOfMedia:
+            self._pr_player = None
+            self._pr_audio = None
+            self._pr_play.setText("▶")
+        elif status == QMediaPlayer.MediaStatus.InvalidMedia:
+            sp = self._pr_player.source().toString()
+            self._pr_player = None
+            self._pr_audio = None
+            if sp and str(BEEP_PATH) not in sp:
                 self._pr_sound.setText("")
                 self._pr_toggle_sound()
             else:
                 self._pr_play.setText("▶")
-
-    def _pr_on_playing_changed(self):
-        if self._pr_snd and not self._pr_snd.isPlaying():
-            self._pr_snd = None
-            self._pr_play.setText("▶")
 
     def _on_save(self):
         cfg = load_config()

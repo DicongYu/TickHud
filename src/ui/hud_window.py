@@ -18,9 +18,10 @@ from src.db.local_store import LocalStore
 from src.config.settings import DATA_DIR, load_config, is_dst, BEEP_PATH
 
 try:
-    from PyQt6.QtMultimedia import QSoundEffect
+    from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 except ImportError:
-    QSoundEffect = None
+    QMediaPlayer = None
+    QAudioOutput = None
 
 GREEN = "#22c55e"
 RED = "#ef4444"
@@ -441,7 +442,6 @@ class HudWindow(QMainWindow):
 
     def _load_alarms(self):
         self._alarms: list[dict] = []
-        self._alarm_sound = None
         self._alarm_fired: set[str] = set()
         self._pr_interval = 0
         self._pr_sound = ""
@@ -453,9 +453,6 @@ class HudWindow(QMainWindow):
         if pr.get("enabled"):
             self._pr_interval = pr.get("interval", 5)
             self._pr_sound = pr.get("sound", "")
-        if QSoundEffect is not None:
-            self._alarm_sound = QSoundEffect(self)
-            self._alarm_sound.setVolume(0.8)
         self._alarm_timer = QTimer(self)
         self._alarm_timer.timeout.connect(self._alarm_tick)
         self._alarm_timer.start(1000)
@@ -495,10 +492,14 @@ class HudWindow(QMainWindow):
         sp = sound_path or ""
         if not sp or not Path(sp).exists():
             sp = str(BEEP_PATH)
-        if sp and Path(sp).exists() and QSoundEffect is not None:
+        if sp and Path(sp).exists() and QMediaPlayer is not None:
             from PyQt6.QtCore import QUrl
-            self._alarm_sound.setSource(QUrl.fromLocalFile(sp))
-            self._alarm_sound.play()
+            p = QMediaPlayer(self)
+            ao = QAudioOutput()
+            p.setAudioOutput(ao)
+            ao.setVolume(0.8)
+            p.setSource(QUrl.fromLocalFile(sp))
+            p.play()
         else:
             from PyQt6.QtWidgets import QApplication
             QApplication.beep()
