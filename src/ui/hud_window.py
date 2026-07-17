@@ -445,6 +445,8 @@ class HudWindow(QMainWindow):
         self._alarm_fired: set[str] = set()
         self._pr_interval = 0
         self._pr_sound = ""
+        self._alarm_player = None
+        self._alarm_audio = None
         cfg = load_config()
         for a in cfg.get("alarms", []):
             if a.get("enabled"):
@@ -494,15 +496,21 @@ class HudWindow(QMainWindow):
             sp = str(BEEP_PATH)
         if sp and Path(sp).exists() and QMediaPlayer is not None:
             from PyQt6.QtCore import QUrl
-            p = QMediaPlayer(self)
-            ao = QAudioOutput()
-            p.setAudioOutput(ao)
-            ao.setVolume(0.8)
-            p.setSource(QUrl.fromLocalFile(sp))
-            p.play()
+            self._alarm_player = QMediaPlayer(self)
+            self._alarm_audio = QAudioOutput(self)
+            self._alarm_player.setAudioOutput(self._alarm_audio)
+            self._alarm_audio.setVolume(0.8)
+            self._alarm_player.mediaStatusChanged.connect(self._on_alarm_media_status)
+            self._alarm_player.setSource(QUrl.fromLocalFile(sp))
+            self._alarm_player.play()
         else:
             from PyQt6.QtWidgets import QApplication
             QApplication.beep()
+
+    def _on_alarm_media_status(self, status):
+        if status == QMediaPlayer.MediaStatus.EndOfMedia or status == QMediaPlayer.MediaStatus.InvalidMedia:
+            self._alarm_player = None
+            self._alarm_audio = None
 
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton:

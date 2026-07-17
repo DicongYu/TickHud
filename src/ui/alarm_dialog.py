@@ -124,7 +124,7 @@ class AlarmRow:
         if sound_path and Path(sound_path).exists():
             from PyQt6.QtCore import QUrl
             self._player = QMediaPlayer(self._parent) if self._parent else QMediaPlayer()
-            self._audio_output = QAudioOutput()
+            self._audio_output = QAudioOutput(self._parent) if self._parent else QAudioOutput()
             self._player.setAudioOutput(self._audio_output)
             self._audio_output.setVolume(0.8)
             self._player.mediaStatusChanged.connect(self._on_media_status)
@@ -305,7 +305,7 @@ class AlarmDialog(QDialog):
         if sound_path and Path(sound_path).exists():
             from PyQt6.QtCore import QUrl
             self._pr_player = QMediaPlayer(self)
-            self._pr_audio = QAudioOutput()
+            self._pr_audio = QAudioOutput(self)
             self._pr_player.setAudioOutput(self._pr_audio)
             self._pr_audio.setVolume(0.8)
             self._pr_player.mediaStatusChanged.connect(self._pr_on_media_status)
