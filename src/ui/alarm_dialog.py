@@ -96,9 +96,13 @@ class AlarmRow:
         h, m = data["winter"].split(":")
         self._winter.setTime(self._winter.time().fromString(f"{h}:{m}", "HH:mm"))
         self._sound = QLineEdit(data.get("sound", ""))
-        self._sound.setPlaceholderText("None (system beep)")
+        self._sound.setPlaceholderText("None (bundled beep)")
         self._browse = QPushButton("Browse…")
         self._browse.clicked.connect(self._pick_sound)
+        self._clear = QPushButton("✕")
+        self._clear.setFixedWidth(24)
+        self._clear.setToolTip("Reset to default")
+        self._clear.clicked.connect(lambda: self._sound.setText(""))
         self._play = QPushButton("▶")
         self._play.setFixedWidth(32)
         self._play.clicked.connect(self._toggle_sound)
@@ -123,8 +127,9 @@ class AlarmRow:
             from PyQt6.QtCore import QUrl
             self._snd = QSoundEffect(self._parent) if self._parent else QSoundEffect()
             self._snd.setVolume(0.8)
-            self._snd.setSource(QUrl.fromLocalFile(sound_path))
             self._snd.playingChanged.connect(self._on_playing_changed)
+            self._snd.statusChanged.connect(lambda st, sp=sound_path: self._on_snd_error(st, sp))
+            self._snd.setSource(QUrl.fromLocalFile(sound_path))
             self._snd.play()
             self._play.setText("■")
         else:
@@ -133,6 +138,15 @@ class AlarmRow:
             self._play.setText("■")
             from PyQt6.QtCore import QTimer
             QTimer.singleShot(250, lambda: self._play.setText("▶"))
+
+    def _on_snd_error(self, status: int, original_path: str):
+        if status == QSoundEffect.Status.Error:  # type: ignore
+            self._snd = None
+            if original_path != str(BEEP_PATH):
+                self._sound.setText("")
+                self._toggle_sound()
+            else:
+                self._play.setText("▶")
 
     def _on_playing_changed(self):
         if self._snd and not self._snd.isPlaying():
@@ -149,7 +163,7 @@ class AlarmRow:
         }
 
     def widgets(self):
-        return [self._enabled, self._summer, self._winter, self._sound, self._browse, self._play]
+        return [self._enabled, self._summer, self._winter, self._sound, self._browse, self._clear, self._play]
 
 
 class AlarmDialog(QDialog):
@@ -183,7 +197,7 @@ class AlarmDialog(QDialog):
             w = QLabel(lbl)
             w.setStyleSheet("font-size: 11px; color: #888;")
             if i == 3:
-                w.setFixedWidth(210)
+                w.setFixedWidth(190)
             elif i == 1:
                 w.setFixedWidth(70)
             elif i == 2:
@@ -191,6 +205,9 @@ class AlarmDialog(QDialog):
             elif i == 0:
                 w.setFixedWidth(30)
             header.addWidget(w)
+        clear_header = QLabel("")
+        clear_header.setFixedWidth(24)
+        header.addWidget(clear_header)
         play_header = QLabel("")
         play_header.setFixedWidth(32)
         header.addWidget(play_header)
@@ -208,7 +225,8 @@ class AlarmDialog(QDialog):
             row_layout.addWidget(widgets[2])  # winter time
             row_layout.addWidget(widgets[3], 1)  # sound path
             row_layout.addWidget(widgets[4])  # browse
-            row_layout.addWidget(widgets[5])  # play
+            row_layout.addWidget(widgets[5])  # clear
+            row_layout.addWidget(widgets[6])  # play
             group_layout.addLayout(row_layout)
 
         layout.addWidget(group)
@@ -230,12 +248,18 @@ class AlarmDialog(QDialog):
         pr_layout.addWidget(self._pr_interval)
 
         self._pr_sound = QLineEdit(pr.get("sound", ""))
-        self._pr_sound.setPlaceholderText("None (system beep)")
+        self._pr_sound.setPlaceholderText("None (bundled beep)")
         pr_layout.addWidget(self._pr_sound, 1)
 
         self._pr_browse = QPushButton("Browse…")
         self._pr_browse.clicked.connect(self._pr_pick_sound)
         pr_layout.addWidget(self._pr_browse)
+
+        self._pr_clear = QPushButton("✕")
+        self._pr_clear.setFixedWidth(24)
+        self._pr_clear.setToolTip("Reset to default")
+        self._pr_clear.clicked.connect(lambda: self._pr_sound.setText(""))
+        pr_layout.addWidget(self._pr_clear)
 
         self._pr_play = QPushButton("▶")
         self._pr_play.setFixedWidth(32)
@@ -276,8 +300,9 @@ class AlarmDialog(QDialog):
             from PyQt6.QtCore import QUrl
             self._pr_snd = QSoundEffect(self)
             self._pr_snd.setVolume(0.8)
-            self._pr_snd.setSource(QUrl.fromLocalFile(sound_path))
             self._pr_snd.playingChanged.connect(self._pr_on_playing_changed)
+            self._pr_snd.statusChanged.connect(lambda st, sp=sound_path: self._pr_on_snd_error(st, sp))
+            self._pr_snd.setSource(QUrl.fromLocalFile(sound_path))
             self._pr_snd.play()
             self._pr_play.setText("■")
         else:
@@ -286,6 +311,15 @@ class AlarmDialog(QDialog):
             self._pr_play.setText("■")
             from PyQt6.QtCore import QTimer
             QTimer.singleShot(250, lambda: self._pr_play.setText("▶"))
+
+    def _pr_on_snd_error(self, status: int, original_path: str):
+        if status == QSoundEffect.Status.Error:  # type: ignore
+            self._pr_snd = None
+            if original_path != str(BEEP_PATH):
+                self._pr_sound.setText("")
+                self._pr_toggle_sound()
+            else:
+                self._pr_play.setText("▶")
 
     def _pr_on_playing_changed(self):
         if self._pr_snd and not self._pr_snd.isPlaying():
