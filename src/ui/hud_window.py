@@ -497,8 +497,8 @@ class HudWindow(QMainWindow):
             self._alarm_sound.setSource(QUrl.fromLocalFile(sound_path))
             self._alarm_sound.play()
         else:
-            import sys
-            sys.stdout.write(f"\a{market} open!\n")
+            from PyQt6.QtWidgets import QApplication
+            QApplication.beep()
 
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton:
