@@ -3,11 +3,17 @@ from __future__ import annotations
 import os
 from pathlib import Path
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QFontDatabase
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QCheckBox, QTimeEdit, QLineEdit, QFileDialog, QGroupBox,
     QComboBox,
 )
+
+try:
+    from PyQt6.QtMultimedia import QSoundEffect
+except ImportError:
+    QSoundEffect = None
 
 from src.config.settings import load_config, save_config, is_dst
 
@@ -75,7 +81,8 @@ QPushButton#saveBtn:hover {
 
 
 class AlarmRow:
-    def __init__(self, data: dict):
+    def __init__(self, data: dict, parent=None):
+        self._parent = parent
         self.market = data["market"]
         self._enabled = QCheckBox()
         self._enabled.setChecked(data.get("enabled", False))
@@ -91,6 +98,9 @@ class AlarmRow:
         self._sound.setPlaceholderText("None (system beep)")
         self._browse = QPushButton("Browse…")
         self._browse.clicked.connect(self._pick_sound)
+        self._play = QPushButton("▶")
+        self._play.setFixedWidth(32)
+        self._play.clicked.connect(self._play_sound)
 
     def _pick_sound(self):
         fp, _ = QFileDialog.getOpenFileName(
@@ -98,6 +108,18 @@ class AlarmRow:
         )
         if fp:
             self._sound.setText(fp)
+
+    def _play_sound(self):
+        sound_path = self._sound.text().strip()
+        if sound_path and Path(sound_path).exists() and QSoundEffect is not None:
+            from PyQt6.QtCore import QUrl
+            snd = QSoundEffect(self._parent) if self._parent else QSoundEffect()
+            snd.setVolume(0.8)
+            snd.setSource(QUrl.fromLocalFile(sound_path))
+            snd.play()
+        else:
+            import sys
+            sys.stdout.write("\a")
 
     def to_dict(self) -> dict:
         return {
@@ -109,7 +131,7 @@ class AlarmRow:
         }
 
     def widgets(self):
-        return [self._enabled, self._summer, self._winter, self._sound, self._browse]
+        return [self._enabled, self._summer, self._winter, self._sound, self._browse, self._play]
 
 
 class AlarmDialog(QDialog):
@@ -123,7 +145,7 @@ class AlarmDialog(QDialog):
         )
 
         cfg = load_config()
-        self._rows = [AlarmRow(a) for a in cfg.get("alarms", [])]
+        self._rows = [AlarmRow(a, parent=self) for a in cfg.get("alarms", [])]
         pr = cfg.get("periodic_reminder", {"enabled": False, "interval": 5, "sound": ""})
 
         layout = QVBoxLayout(self)
@@ -142,7 +164,7 @@ class AlarmDialog(QDialog):
             w = QLabel(lbl)
             w.setStyleSheet("font-size: 11px; color: #888;")
             if i == 3:
-                w.setFixedWidth(220)
+                w.setFixedWidth(210)
             elif i == 1:
                 w.setFixedWidth(70)
             elif i == 2:
@@ -150,6 +172,9 @@ class AlarmDialog(QDialog):
             elif i == 0:
                 w.setFixedWidth(30)
             header.addWidget(w)
+        play_header = QLabel("")
+        play_header.setFixedWidth(32)
+        header.addWidget(play_header)
         group_layout.addLayout(header)
 
         for row in self._rows:
@@ -164,6 +189,7 @@ class AlarmDialog(QDialog):
             row_layout.addWidget(widgets[2])  # winter time
             row_layout.addWidget(widgets[3], 1)  # sound path
             row_layout.addWidget(widgets[4])  # browse
+            row_layout.addWidget(widgets[5])  # play
             group_layout.addLayout(row_layout)
 
         layout.addWidget(group)
@@ -192,6 +218,11 @@ class AlarmDialog(QDialog):
         self._pr_browse.clicked.connect(self._pr_pick_sound)
         pr_layout.addWidget(self._pr_browse)
 
+        self._pr_play = QPushButton("▶")
+        self._pr_play.setFixedWidth(32)
+        self._pr_play.clicked.connect(self._pr_play_sound)
+        pr_layout.addWidget(self._pr_play)
+
         layout.addWidget(pr_group)
         layout.addStretch()
 
@@ -212,6 +243,18 @@ class AlarmDialog(QDialog):
         )
         if fp:
             self._pr_sound.setText(fp)
+
+    def _pr_play_sound(self):
+        sound_path = self._pr_sound.text().strip()
+        if sound_path and Path(sound_path).exists() and QSoundEffect is not None:
+            from PyQt6.QtCore import QUrl
+            snd = QSoundEffect(self)
+            snd.setVolume(0.8)
+            snd.setSource(QUrl.fromLocalFile(sound_path))
+            snd.play()
+        else:
+            import sys
+            sys.stdout.write("\a")
 
     def _on_save(self):
         cfg = load_config()
