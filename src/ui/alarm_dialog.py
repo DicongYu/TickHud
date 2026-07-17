@@ -128,7 +128,7 @@ class AlarmRow:
             self._snd = QSoundEffect(self._parent) if self._parent else QSoundEffect()
             self._snd.setVolume(0.8)
             self._snd.playingChanged.connect(self._on_playing_changed)
-            self._snd.statusChanged.connect(lambda st, sp=sound_path: self._on_snd_error(st, sp))
+            self._snd.statusChanged.connect(lambda sp=sound_path: self._on_snd_error(sp))
             self._snd.setSource(QUrl.fromLocalFile(sound_path))
             self._snd.play()
             self._play.setText("■")
@@ -139,8 +139,8 @@ class AlarmRow:
             from PyQt6.QtCore import QTimer
             QTimer.singleShot(250, lambda: self._play.setText("▶"))
 
-    def _on_snd_error(self, status: int, original_path: str):
-        if status == QSoundEffect.Status.Error:  # type: ignore
+    def _on_snd_error(self, original_path: str):
+        if self._snd and self._snd.status() == QSoundEffect.Status.Error:  # type: ignore
             self._snd = None
             if original_path != str(BEEP_PATH):
                 self._sound.setText("")
@@ -301,7 +301,7 @@ class AlarmDialog(QDialog):
             self._pr_snd = QSoundEffect(self)
             self._pr_snd.setVolume(0.8)
             self._pr_snd.playingChanged.connect(self._pr_on_playing_changed)
-            self._pr_snd.statusChanged.connect(lambda st, sp=sound_path: self._pr_on_snd_error(st, sp))
+            self._pr_snd.statusChanged.connect(lambda sp=sound_path: self._pr_on_snd_error(sp))
             self._pr_snd.setSource(QUrl.fromLocalFile(sound_path))
             self._pr_snd.play()
             self._pr_play.setText("■")
@@ -312,8 +312,8 @@ class AlarmDialog(QDialog):
             from PyQt6.QtCore import QTimer
             QTimer.singleShot(250, lambda: self._pr_play.setText("▶"))
 
-    def _pr_on_snd_error(self, status: int, original_path: str):
-        if status == QSoundEffect.Status.Error:  # type: ignore
+    def _pr_on_snd_error(self, original_path: str):
+        if self._pr_snd and self._pr_snd.status() == QSoundEffect.Status.Error:  # type: ignore
             self._pr_snd = None
             if original_path != str(BEEP_PATH):
                 self._pr_sound.setText("")
