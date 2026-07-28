@@ -65,6 +65,14 @@ class LocalStore:
             row = cur.fetchone()
             return dict(row) if row else None
 
+    def get_first_baseline(self) -> Optional[dict]:
+        with self._lock:
+            cur = self._conn.execute(
+                "SELECT * FROM baseline ORDER BY date ASC LIMIT 1"
+            )
+            row = cur.fetchone()
+            return dict(row) if row else None
+
     def save_baseline(self, date: str, equity_usdt: float, realized_pnl: float = 0.0):
         now = datetime.now(timezone.utc).isoformat()
         with self._lock:

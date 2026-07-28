@@ -93,30 +93,26 @@ async def main_async(app: QApplication, use_mock: bool = False):
     )
 
     if not use_mock:
-        for _ in range(50):
+        for _ in range(70):
             await asyncio.sleep(0.2)
             if engine.snapshot.equity != 0:
                 break
         current_eq = engine.snapshot.equity
         today = datetime.datetime.now().strftime("%Y-%m-%d")
-        latest = store.get_latest_baseline()
-        if latest and current_eq > 0 and latest["date"] == today:
-            bl_eq = latest["equity_usdt"]
-            ratio = abs(bl_eq - current_eq) / max(bl_eq, 1)
-            if ratio < 10.0:
-                bl_ts = latest.get("created_at") or f"{today}T00:00:00"
+        first = store.get_first_baseline()
+        if first and current_eq > 0:
+            bl_eq = first["equity_usdt"]
+            bl_ts = first.get("created_at")
+            if bl_ts:
                 net = store.get_transfer_sum_since(bl_ts)
-                engine.set_baseline(bl_eq, today, net)
-                logger.info("Restored baseline %s: %.2f (net_deposit=%.2f)", today, bl_eq, net)
             else:
-                logger.warning("Baseline %.2f differs from equity %.2f (%.0f%%), overwriting", bl_eq, current_eq, ratio * 100)
-                store.save_baseline(today, current_eq)
-                engine.set_baseline(current_eq, today, 0.0)
-                logger.info("Auto-set baseline to current equity: %.2f", current_eq)
+                net = 0.0
+            engine.set_baseline(bl_eq, first["date"], net)
+            logger.info("Restored permanent baseline %s: %.2f (net_deposit=%.2f)", first["date"], bl_eq, net)
         elif current_eq > 0:
             store.save_baseline(today, current_eq)
             engine.set_baseline(current_eq, today, 0.0)
-            logger.info("First launch: baseline set to current equity: %.2f", current_eq)
+            logger.info("First launch: permanent baseline set to current equity: %.2f", current_eq)
 
     hud = HudWindow(engine, store, test_mode=use_mock)
     hud.show()
