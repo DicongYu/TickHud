@@ -78,6 +78,7 @@ class MockEngine:
 
     async def _simulate_loop(self):
         eq = self._baseline_equity or 10000.0
+        self._ref_equity = eq
 
         while self._running:
             self._t += 0.01
@@ -88,16 +89,10 @@ class MockEngine:
             eq = b + op + self._realized_pnl  # equity = baseline + open + realized
             dp = eq - b - self._net_deposit
 
-            eq_pct = 0
-            if self._prev_eq is not None and self._prev_eq != 0:
-                eq_pct = (eq - self._prev_eq) / abs(self._prev_eq) * 100
-            else:
-                eq_pct = 0.05 * math.cos(self._t * 0.08)
+            eq_pct = ((eq - self._ref_equity) / self._ref_equity * 100) if self._ref_equity else 0.0
 
             op_pct = (op / b) * 100 if b else 0
             dp_pct = (dp / b) * 100 if b else 0
-
-            self._prev_eq = eq
 
             self._log_kpi_counter = getattr(self, "_log_kpi_counter", 0) + 1
             if self._log_kpi_counter >= 300:
@@ -118,5 +113,5 @@ class MockEngine:
 
             await asyncio.sleep(0.1)
 
-    _prev_eq: float = 0.0
+    _ref_equity: float = 0.0
     _prev_open_pnl: float = 0.0

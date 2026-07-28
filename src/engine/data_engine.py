@@ -107,6 +107,7 @@ class DataEngine:
         self._baseline_date: Optional[str] = None
 
         self._prev_equity: float = 0.0
+        self._ref_equity: float = 0.0
         self._prev_open_pnl: float = 0.0
         self._grid_float_pnl: float = 0.0
         self._connected = False
@@ -429,7 +430,11 @@ class DataEngine:
                 if tot:
                     total += self._approx_usd(currency, tot)
 
-        return round(total, 2), 0.0
+        total = round(total, 2)
+        if total > 0 and self._ref_equity == 0:
+            self._ref_equity = total
+        pct = ((total - self._ref_equity) / self._ref_equity * 100) if self._ref_equity else 0.0
+        return total, round(pct, 2)
 
     @staticmethod
     def _approx_usd(currency: str, amount: float) -> float:
