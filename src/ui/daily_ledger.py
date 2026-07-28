@@ -97,13 +97,15 @@ class DailyLedgerDialog(QDialog):
         sorted_dates = sorted(self._baselines.keys())
         prev_eq = None
         prev_ts = None
+        prev_date = None
         for date in sorted_dates:
             curr_eq, curr_ts = self._baselines[date]
             if prev_eq is not None and prev_ts is not None:
                 net = self._store.get_transfer_sum_between(prev_ts, curr_ts)
-                self._daily_pnls[date] = round(curr_eq - prev_eq - net, 2)
+                self._daily_pnls[prev_date] = round(curr_eq - prev_eq - net, 2)
             prev_eq = curr_eq
             prev_ts = curr_ts
+            prev_date = date
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
