@@ -23,6 +23,8 @@ class MockEngine:
         self._baseline_equity: Optional[float] = None
         self._net_deposit: float = 0.0
         self._baseline_date: Optional[str] = None
+        self._ref_equity: float = 0.0
+        self._permanent_ref: float = 0.0
 
         self._realized_pnl: float = 0.0
         self._open_pnl: float = 10.0
@@ -41,6 +43,11 @@ class MockEngine:
         self._baseline_equity = equity
         self._baseline_date = date_str
         self._net_deposit = net_deposit
+
+    def set_permanent_ref(self, equity: float):
+        self._permanent_ref = equity
+        if self._ref_equity == 0:
+            self._ref_equity = equity
 
     def has_baseline(self) -> bool:
         return self._baseline_equity is not None
@@ -78,7 +85,8 @@ class MockEngine:
 
     async def _simulate_loop(self):
         eq = self._baseline_equity or 10000.0
-        self._ref_equity = eq
+        if self._ref_equity == 0:
+            self._ref_equity = self._permanent_ref or eq
 
         while self._running:
             self._t += 0.01
@@ -113,5 +121,4 @@ class MockEngine:
 
             await asyncio.sleep(0.1)
 
-    _ref_equity: float = 0.0
     _prev_open_pnl: float = 0.0

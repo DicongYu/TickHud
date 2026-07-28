@@ -108,6 +108,7 @@ class DataEngine:
 
         self._prev_equity: float = 0.0
         self._ref_equity: float = 0.0
+        self._permanent_ref: float = 0.0
         self._prev_open_pnl: float = 0.0
         self._grid_float_pnl: float = 0.0
         self._connected = False
@@ -135,6 +136,10 @@ class DataEngine:
         self._baseline_equity = equity
         self._baseline_date = date_str
         self._net_deposit = net_deposit
+
+    def set_permanent_ref(self, equity: float):
+        self._permanent_ref = equity
+        self._ref_equity = equity
 
     def has_baseline(self) -> bool:
         return self._baseline_equity is not None
@@ -432,7 +437,7 @@ class DataEngine:
 
         total = round(total, 2)
         if total > 0 and self._ref_equity == 0:
-            self._ref_equity = self._baseline_equity or total
+            self._ref_equity = self._permanent_ref or total
         pct = ((total - self._ref_equity) / self._ref_equity * 100) if self._ref_equity else 0.0
         return total, round(pct, 2)
 

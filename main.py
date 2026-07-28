@@ -99,20 +99,32 @@ async def main_async(app: QApplication, use_mock: bool = False):
                 break
         current_eq = engine.snapshot.equity
         today = datetime.datetime.now().strftime("%Y-%m-%d")
+
         first = store.get_first_baseline()
-        if first and current_eq > 0:
-            bl_eq = first["equity_usdt"]
-            bl_ts = first.get("created_at")
-            if bl_ts:
+        if first and first["equity_usdt"] > 0:
+            engine.set_permanent_ref(first["equity_usdt"])
+            logger.info("Permanent ref set from first baseline %s: %.2f", first["date"], first["equity_usdt"])
+        elif current_eq > 0:
+            engine.set_permanent_ref(current_eq)
+            logger.info("Permanent ref set to current equity: %.2f", current_eq)
+
+        latest = store.get_latest_baseline()
+        if latest and current_eq > 0 and latest["date"] == today:
+            bl_eq = latest["equity_usdt"]
+            ratio = abs(bl_eq - current_eq) / max(bl_eq, 1)
+            if ratio < 10.0:
+                bl_ts = latest.get("created_at") or f"{today}T00:00:00"
                 net = store.get_transfer_sum_since(bl_ts)
+                engine.set_baseline(bl_eq, today, net)
+                logger.info("Restored baseline %s: %.2f (net_deposit=%.2f)", today, bl_eq, net)
             else:
-                net = 0.0
-            engine.set_baseline(bl_eq, first["date"], net)
-            logger.info("Restored permanent baseline %s: %.2f (net_deposit=%.2f)", first["date"], bl_eq, net)
+                logger.warning("Baseline %.2f differs from equity %.2f (%.0f%%), overwriting", bl_eq, current_eq, ratio * 100)
+                store.save_baseline(today, current_eq)
+                engine.set_baseline(current_eq, today, 0.0)
         elif current_eq > 0:
             store.save_baseline(today, current_eq)
             engine.set_baseline(current_eq, today, 0.0)
-            logger.info("First launch: permanent baseline set to current equity: %.2f", current_eq)
+            logger.info("First launch: baseline set to current equity: %.2f", current_eq)
 
     hud = HudWindow(engine, store, test_mode=use_mock)
     hud.show()
@@ -130,6 +142,7 @@ async def main_async(app: QApplication, use_mock: bool = False):
                 snap = engine.snapshot
                 date_str = next_midnight.strftime("%Y-%m-%d")
                 store.save_baseline(date_str, snap.equity)
+                engine.set_baseline(snap.equity, date_str, 0.0)
                 store.save_snapshot(snap.equity, snap.open_pnl, snap.daily_pnl)
                 logger.info("Midnight baseline saved: %s eq=%.2f", date_str, snap.equity)
 
