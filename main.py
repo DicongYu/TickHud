@@ -103,7 +103,7 @@ async def main_async(app: QApplication, use_mock: bool = False):
         if latest and current_eq > 0 and latest["date"] == today:
             bl_eq = latest["equity_usdt"]
             ratio = abs(bl_eq - current_eq) / max(bl_eq, 1)
-            if ratio < 0.2:
+            if ratio < 10.0:
                 bl_ts = latest.get("created_at") or f"{today}T00:00:00"
                 net = store.get_transfer_sum_since(bl_ts)
                 engine.set_baseline(bl_eq, today, net)
