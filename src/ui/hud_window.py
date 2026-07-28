@@ -319,7 +319,7 @@ class HudWindow(QMainWindow):
         eq_arrow = "▲" if eq_pct >= 0 else "▼"
         eq_color = GREEN if eq_pct >= 0 else RED
         self._card_eq.update(
-            f"{snap.equity:,.2f}",
+            f"{snap.equity:,.3f}",
             f"{eq_arrow} {abs(eq_pct):.2f}%",
             eq_color,
         )
