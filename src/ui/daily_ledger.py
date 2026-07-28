@@ -257,9 +257,10 @@ class DailyLedgerDialog(QDialog):
 
         w.setStyleSheet(f"background: {clr_bg}; border-radius: 6px;")
 
-        equity = self._baselines.get(date_str)
+        eq_tup = self._baselines.get(date_str)
         tip_parts = [f"Date:  {date_str}"]
-        if equity is not None:
+        if eq_tup is not None:
+            equity, _ = eq_tup
             tip_parts.append(f"Equity: {equity:.2f} USDT")
         if pnl is not None:
             tip_parts.append(f"PnL:   {pnl:+.2f} USDT")
