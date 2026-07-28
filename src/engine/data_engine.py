@@ -432,7 +432,7 @@ class DataEngine:
 
         total = round(total, 2)
         if total > 0 and self._ref_equity == 0:
-            self._ref_equity = total
+            self._ref_equity = self._baseline_equity or total
         pct = ((total - self._ref_equity) / self._ref_equity * 100) if self._ref_equity else 0.0
         return total, round(pct, 2)
 
