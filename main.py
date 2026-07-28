@@ -134,7 +134,6 @@ async def main_async(app: QApplication, use_mock: bool = False):
                 snap = engine.snapshot
                 date_str = next_midnight.strftime("%Y-%m-%d")
                 store.save_baseline(date_str, snap.equity)
-                engine.set_baseline(snap.equity, date_str, 0.0)
                 store.save_snapshot(snap.equity, snap.open_pnl, snap.daily_pnl)
                 logger.info("Midnight baseline saved: %s eq=%.2f", date_str, snap.equity)
 
