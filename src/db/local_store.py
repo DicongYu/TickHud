@@ -97,6 +97,14 @@ class LocalStore:
             cur = self._conn.execute("SELECT MAX(ts) FROM transfers")
             return cur.fetchone()[0]
 
+    def delete_transfers(self, note: str = ""):
+        with self._lock:
+            if note:
+                self._conn.execute("DELETE FROM transfers WHERE note = ?", (note,))
+            else:
+                self._conn.execute("DELETE FROM transfers")
+            self._conn.commit()
+
     def get_transfer_sum_since(self, since_date: str) -> float:
         with self._lock:
             cur = self._conn.execute(
