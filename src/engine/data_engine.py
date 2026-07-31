@@ -74,6 +74,24 @@ class OkxRestClient:
     async def fetch_active_grids(self, algo_ord_type: str = "contract_grid") -> dict:
         return await self._get(f"/api/v5/tradingBot/grid/orders-algo-pending?algoOrdType={algo_ord_type}")
 
+    async def fetch_bills(self, since_ts_ms: int) -> list[dict]:
+        """Fetch trading-account bills since timestamp (unix ms), paginated."""
+        bills: list[dict] = []
+        after = ""
+        while True:
+            path = f"/api/v5/account/bills?limit=100&begin={since_ts_ms}"
+            if after:
+                path += f"&after={after}"
+            raw = await self._get(path)
+            data = raw.get("data", [])
+            if not data:
+                break
+            bills.extend(data)
+            if len(data) < 100:
+                break
+            after = data[-1].get("billId", "")
+        return bills
+
 
 @dataclass
 class MarketSnapshot:
@@ -106,10 +124,9 @@ class DataEngine:
         self._net_deposit: float = 0.0
         self._baseline_date: Optional[str] = None
 
-        self._prev_equity: float = 0.0
         self._ref_equity: float = 0.0
         self._permanent_ref: float = 0.0
-        self._prev_open_pnl: float = 0.0
+        self._transfer_last_ts_ms: int = 0
         self._grid_float_pnl: float = 0.0
         self._connected = False
         self._last_update: float = 0.0
@@ -141,6 +158,12 @@ class DataEngine:
         self._permanent_ref = equity
         self._ref_equity = equity
 
+    def set_transfer_last_ts(self, ts_iso: str):
+        try:
+            self._transfer_last_ts_ms = int(datetime.fromisoformat(ts_iso).timestamp() * 1000)
+        except (ValueError, TypeError):
+            logger.warning("Invalid transfer ts: %s", ts_iso)
+
     def has_baseline(self) -> bool:
         return self._baseline_equity is not None
 
@@ -156,7 +179,10 @@ class DataEngine:
             asyncio.create_task(self._watch_positions_loop()),
             asyncio.create_task(self._connection_monitor()),
             asyncio.create_task(self._fetch_grids_loop()),
+            asyncio.create_task(self._watch_transfers_loop()),
         ]
+        if self._transfer_last_ts_ms == 0:
+            self._transfer_last_ts_ms = int(time.time() * 1000)
         logger.info("DataEngine started (mode=ws)")
 
     async def stop(self):
@@ -332,6 +358,43 @@ class DataEngine:
                 total_float += fp
         self._grid_float_pnl = total_float
 
+    async def _watch_transfers_loop(self):
+        while self._running:
+            await asyncio.sleep(5)
+            if not self._connected:
+                continue
+            try:
+                await self._sync_transfers()
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.warning("Transfer sync error: %s", e)
+
+    async def _sync_transfers(self):
+        if not self._rest_client:
+            self._rest_client = self._make_rest_client()
+        bills = await self._rest_client.fetch_bills(self._transfer_last_ts_ms)
+        for bill in sorted(bills, key=lambda b: int(b.get("ts", 0))):
+            ts_ms = int(bill.get("ts", 0))
+            if ts_ms <= self._transfer_last_ts_ms:
+                continue
+            frm = bill.get("from")
+            to = bill.get("to")
+            if not frm and not to:
+                continue
+            if bill.get("ccy", "") not in ("USDT", "USDC", ""):
+                continue
+            bal_chg = self._safe_float(bill.get("balChg"), 0.0)
+            if bal_chg == 0:
+                self._transfer_last_ts_ms = max(self._transfer_last_ts_ms, ts_ms)
+                continue
+            self._net_deposit += bal_chg
+            ts_iso = datetime.fromtimestamp(ts_ms / 1000, timezone.utc).isoformat()
+            logger.info("OKX transfer: %+.2f (net_deposit=%+.2f)", bal_chg, self._net_deposit)
+            if self._on_transfer:
+                self._on_transfer(round(bal_chg, 2), ts_iso)
+            self._transfer_last_ts_ms = max(self._transfer_last_ts_ms, ts_ms)
+
     async def _connection_monitor(self):
         while self._running:
             await asyncio.sleep(2)
@@ -365,8 +428,6 @@ class DataEngine:
             self._log_kpi_counter = 0
             logger.info("KPI: equity=%.2f open_pnl=%.2f daily_pnl=%.2f realized_pnl=%.2f", eq, op, dp, rp)
 
-        self._detect_transfer(eq, op)
-
         self._snapshot = MarketSnapshot(
             equity=eq,
             equity_pct=eq_pct,
@@ -379,24 +440,6 @@ class DataEngine:
             timestamp=time.time(),
             latency_ms=self._latency_ms,
         )
-        self._prev_equity = eq
-        self._prev_open_pnl = op
-
-    def _detect_transfer(self, equity: float, open_pnl: float):
-        if self._prev_equity is None or self._prev_equity == 0:
-            return
-        if self._baseline_equity is None:
-            return
-        eq_change = equity - self._prev_equity
-        pnl_change = open_pnl - self._prev_open_pnl
-        net_sans_pnl = eq_change - pnl_change
-        threshold = max(2, abs(self._baseline_equity) * 0.005)
-        if abs(net_sans_pnl) >= threshold:
-            amount = round(net_sans_pnl, 2)
-            self._net_deposit += amount
-            logger.info("Transfer detected: %+.2f (net_deposit=%+.2f)", net_sans_pnl, self._net_deposit)
-            if self._on_transfer:
-                self._on_transfer(amount)
 
     @staticmethod
     def _safe_float(value: Any, default: float = 0.0) -> float:

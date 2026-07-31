@@ -82,14 +82,20 @@ class LocalStore:
             )
             self._conn.commit()
 
-    def add_transfer(self, amount: float, note: str = ""):
-        now = datetime.now(timezone.utc).isoformat()
+    def add_transfer(self, amount: float, note: str = "", ts: Optional[str] = None):
+        if ts is None:
+            ts = datetime.now(timezone.utc).isoformat()
         with self._lock:
             self._conn.execute(
                 "INSERT INTO transfers (ts, amount, note) VALUES (?, ?, ?)",
-                (now, amount, note),
+                (ts, amount, note),
             )
             self._conn.commit()
+
+    def get_latest_transfer_ts(self) -> Optional[str]:
+        with self._lock:
+            cur = self._conn.execute("SELECT MAX(ts) FROM transfers")
+            return cur.fetchone()[0]
 
     def get_transfer_sum_since(self, since_date: str) -> float:
         with self._lock:

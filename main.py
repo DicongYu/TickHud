@@ -82,7 +82,10 @@ async def main_async(app: QApplication, use_mock: bool = False):
         logger.info("Using MockEngine with baseline $10,000")
     else:
         engine = DataEngine(exchange_name=cfg.get("exchange", "okx"))
-        engine._on_transfer = lambda amt: store.add_transfer(amt, "auto-detect")
+        latest_ts = store.get_latest_transfer_ts()
+        if latest_ts:
+            engine.set_transfer_last_ts(latest_ts)
+        engine._on_transfer = lambda amt, ts: store.add_transfer(amt, "auto-detect", ts=ts)
 
     engine_task = asyncio.create_task(
         engine.start(
